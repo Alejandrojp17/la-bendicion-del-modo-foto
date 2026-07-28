@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alejandro J. | La Bendición del Modo Foto</title>
+  <meta name="description" content="Portfolio de fotografía virtual y capturas de videojuegos por Alejandro J.">
+  
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom Minimal Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #09090b;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #27272a;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3f3f46;
+    }
+
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="bg-zinc-950 text-zinc-200 font-sans antialiased min-h-screen flex flex-col selection:bg-zinc-800 selection:text-zinc-100">
+
+  <!-- Header Sobrio -->
+  <header class="border-b border-zinc-900 bg-zinc-950/80 backdrop-blur-md sticky top-0 z-40 transition-colors">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between">
+      
+      <!-- Título del Portfolio -->
+      <div>
+        <h1 class="text-sm font-semibold tracking-widest text-zinc-100 uppercase cursor-pointer hover:text-white transition-colors selection:bg-transparent" onclick="handleTitleClick()">
+          Alejandro J. <span class="text-zinc-500 font-normal">/ La Bendición del Modo Foto</span>
+        </h1>
+      </div>
+
+      <!-- Acciones de Cabecera (Ocultas para visitantes por defecto) -->
+      <div id="adminContainer" class="hidden flex items-center space-x-3">
+        <span class="text-[10px] font-mono text-zinc-500 bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded hidden sm:inline-block">Admin Activo</span>
+        <button 
+          id="openAdminBtn"
+          class="px-3.5 py-1.5 rounded border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white text-xs font-medium tracking-wide transition-all duration-200 flex items-center gap-2"
+        >
+          <i class="fa-solid fa-sliders text-[11px] text-zinc-400"></i>
+          <span>Administración</span>
+        </button>
+        <button 
+          id="logoutAdminBtn"
+          onclick="toggleAdminMode(false)"
+          class="text-zinc-500 hover:text-zinc-300 text-xs px-1.5 py-1"
+          title="Salir de modo Admin"
+        >
+          <i class="fa-solid fa-power-off"></i>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    
+    <!-- Encabezado de Navegación (Carpetas vs Contenido de Carpeta) -->
+    <div id="navigationHeader" class="mb-8 flex items-center justify-between pb-4 border-b border-zinc-900">
+      <!-- Inyectado dinámicamente desde JS -->
+    </div>
+
+    <!-- Contenedor Principal (Grid de Carpetas o Grid de Fotos) -->
+    <div id="mainGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+      <!-- Tarjetas renderizadas vía JS -->
+    </div>
+
+    <!-- Estado Vacío -->
+    <div id="emptyState" class="hidden flex-col items-center justify-center py-24 text-center border border-dashed border-zinc-800 rounded-xl">
+      <i class="fa-regular fa-folder-open text-3xl text-zinc-600 mb-3"></i>
+      <p class="text-sm text-zinc-400 font-medium">No se encontraron contenidos en esta vista.</p>
+      <button onclick="openFolderView()" class="mt-4 px-4 py-1.5 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-xs text-zinc-200 rounded transition-colors">
+        Volver a las carpetas
+      </button>
+    </div>
+
+  </main>
+
+  <!-- Footer Sobrio -->
+  <footer class="border-t border-zinc-900 py-8 text-center text-xs text-zinc-500">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <p>© 2026 Alejandro J. - La Bendición del modo Foto</p>
+      <p class="text-zinc-600">Desarrollado con Gemini, Antigravity y Cariño a partes iguales</p>
+    </div>
+  </footer>
+
+  <!-- MODAL DE VISOR AMPLIADO (SÓLO IMAGEN EN GRANDE CON NAVEGACIÓN) -->
+  <div 
+    id="viewerModal" 
+    class="fixed inset-0 z-50 hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-zinc-950/95 backdrop-blur-md"
+    aria-hidden="true"
+  >
+    <!-- Botón Flecha Izquierda (Anterior) -->
+    <button 
+      id="prevPhotoBtn" 
+      onclick="navigateViewer(-1)"
+      class="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full bg-zinc-950/80 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 hover:border-zinc-700 backdrop-blur-md flex items-center justify-center transition-all shadow-xl"
+      title="Anterior (Flecha Izquierda)"
+    >
+      <i class="fa-solid fa-chevron-left text-base"></i>
+    </button>
+
+    <!-- Botón Flecha Derecha (Siguiente) -->
+    <button 
+      id="nextPhotoBtn" 
+      onclick="navigateViewer(1)"
+      class="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full bg-zinc-950/80 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 hover:border-zinc-700 backdrop-blur-md flex items-center justify-center transition-all shadow-xl"
+      title="Siguiente (Flecha Derecha)"
+    >
+      <i class="fa-solid fa-chevron-right text-base"></i>
+    </button>
+
+    <div class="relative max-w-5xl w-full max-h-[92vh] bg-zinc-950/80 border border-zinc-800/60 rounded-xl overflow-hidden shadow-2xl flex items-center justify-center p-2 sm:p-4 transform scale-95 transition-transform duration-300" id="viewerContent">
+      
+      <!-- Botón de Cierre -->
+      <button 
+        id="closeViewerBtn" 
+        class="absolute top-4 right-4 z-30 w-9 h-9 rounded-full bg-zinc-950/80 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 flex items-center justify-center transition-colors shadow-xl"
+        title="Cerrar (Esc)"
+      >
+        <i class="fa-solid fa-xmark text-sm"></i>
+      </button>
+
+      <!-- Área Única de la Foto Ampliada -->
+      <div class="w-full h-full flex items-center justify-center max-h-[88vh]">
+        <img 
+          id="viewerImage" 
+          src="" 
+          alt="" 
+          class="max-w-full max-h-[85vh] object-contain rounded shadow-2xl transition-opacity duration-200"
+        >
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL DE ACCESO / CONTRASEÑA DE ADMINISTRADOR -->
+  <div 
+    id="passwordModal" 
+    class="fixed inset-0 z-50 hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4 bg-zinc-950/90 backdrop-blur-md"
+  >
+    <div class="relative w-full max-w-sm bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-2xl transform scale-95 transition-transform duration-300" id="passwordModalContent">
+      
+      <div class="flex items-center justify-between mb-4 pb-3 border-b border-zinc-800">
+        <h3 class="text-xs font-semibold text-zinc-100 uppercase tracking-wider flex items-center gap-2">
+          <i class="fa-solid fa-lock text-zinc-400"></i> Acceso Administrador
+        </h3>
+        <button id="closePasswordBtn" onclick="closePasswordModal()" class="text-zinc-400 hover:text-white transition-colors">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+
+      <form id="passwordForm" onsubmit="handlePasswordSubmit(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-zinc-400 mb-1.5">Contraseña Maestra</label>
+          <input 
+            type="password" 
+            id="adminPasswordInput" 
+            required 
+            placeholder="••••••••••••" 
+            class="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded text-xs text-zinc-100 focus:outline-none focus:border-zinc-600 transition-colors"
+          >
+          <p id="passwordError" class="hidden text-[11px] text-red-400 mt-1.5">Contraseña incorrecta. Acceso denegado.</p>
+        </div>
+
+        <button 
+          type="submit" 
+          class="w-full py-2 bg-zinc-100 hover:bg-white text-zinc-950 text-xs font-semibold rounded transition-colors"
+        >
+          Desbloquear Panel
+        </button>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- MODAL DE ADMINISTRACIÓN (Subir Nueva Captura) -->
+  <div 
+    id="adminModal" 
+    class="fixed inset-0 z-50 hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4 bg-zinc-950/90 backdrop-blur-md"
+  >
+    <div class="relative w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-2xl transform scale-95 transition-transform duration-300">
+      
+      <div class="flex items-center justify-between mb-5 pb-3 border-b border-zinc-800">
+        <h3 class="text-sm font-semibold text-zinc-100 uppercase tracking-wider flex items-center gap-2">
+          <i class="fa-solid fa-plus text-zinc-400"></i> Añadir Captura al Portfolio
+        </h3>
+        <button id="closeAdminBtn" class="text-zinc-400 hover:text-white transition-colors">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+
+      <form id="adminUploadForm" onsubmit="handleAdminUpload(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-zinc-400 mb-1">Título de la captura</label>
+          <input 
+            type="text" 
+            id="adminTitle" 
+            required 
+            placeholder="ej. La Majestad de Leyndell" 
+            class="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded text-xs text-zinc-200 focus:outline-none focus:border-zinc-600 transition-colors"
+          >
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-zinc-400 mb-1">Nombre del Videojuego</label>
+          <input 
+            type="text" 
+            id="adminGame" 
+            required 
+            placeholder="ej. Elden Ring" 
+            class="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded text-xs text-zinc-200 focus:outline-none focus:border-zinc-600 transition-colors"
+          >
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-zinc-400 mb-1">URL de la Imagen (Alta Resolución)</label>
+          <input 
+            type="url" 
+            id="adminUrl" 
+            required 
+            placeholder="https://images.unsplash.com/..." 
+            class="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded text-xs text-zinc-200 focus:outline-none focus:border-zinc-600 transition-colors"
+          >
+        </div>
+
+        <button 
+          type="submit" 
+          class="w-full py-2.5 bg-zinc-100 hover:bg-white text-zinc-950 text-xs font-semibold rounded transition-colors mt-2"
+        >
+          Publicar en el Portfolio
+        </button>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- JavaScript Principal -->
+  <script src="app.js"></script>
+</body>
+</html>
