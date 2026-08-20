@@ -166,12 +166,7 @@ function initApp() {
   }
 }
 
-// Ejecutar initApp inmediatamente si el documento ya cargó
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initApp);
-} else {
-  initApp();
-}
+
 
 // Cargar capturas personalizadas del almacenamiento local de forma ultra-segura
 function loadSavedCaptures() {
@@ -1155,4 +1150,11 @@ function readFileAsDataURL(file) {
     reader.onload = (e) => resolve(e.target.result);
     reader.readAsDataURL(file);
   });
+}
+
+// Ejecutar inicialización tras definir todas las funciones
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initApp);
+} else {
+  initApp();
 }
