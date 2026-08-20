@@ -67,24 +67,39 @@
         </h1>
       </div>
 
-      <!-- Acciones de Cabecera (Ocultas para visitantes por defecto) -->
-      <div id="adminContainer" class="hidden flex items-center space-x-3">
-        <span class="text-[10px] font-mono text-zinc-500 bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded hidden sm:inline-block">Admin Activo</span>
+      <!-- Acciones de Cabecera (Botón visible para iniciar o gestionar subidas) -->
+      <div class="flex items-center space-x-3">
+        
+        <!-- Botón visible para solicitar acceso admin si no está activo -->
         <button 
-          id="openAdminBtn"
-          class="px-3.5 py-1.5 rounded border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white text-xs font-medium tracking-wide transition-all duration-200 flex items-center gap-2"
+          id="publicAdminTrigger"
+          onclick="requestAdminAccess()"
+          class="px-3.5 py-1.5 rounded border border-zinc-800 bg-zinc-900/80 hover:bg-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white text-xs font-medium tracking-wide transition-all duration-200 flex items-center gap-2 shadow-sm"
         >
-          <i class="fa-solid fa-sliders text-[11px] text-zinc-400"></i>
-          <span>Administración</span>
+          <i class="fa-solid fa-cloud-arrow-up text-[11px] text-zinc-400"></i>
+          <span>Subir Fotos</span>
         </button>
-        <button 
-          id="logoutAdminBtn"
-          onclick="toggleAdminMode(false)"
-          class="text-zinc-500 hover:text-zinc-300 text-xs px-1.5 py-1"
-          title="Salir de modo Admin"
-        >
-          <i class="fa-solid fa-power-off"></i>
-        </button>
+
+        <!-- Contenedor activo cuando el Admin está logueado -->
+        <div id="adminContainer" class="hidden flex items-center space-x-3">
+          <span class="text-[10px] font-mono text-amber-400/90 bg-amber-950/40 border border-amber-800/60 px-2 py-0.5 rounded hidden sm:inline-block">Admin Activo</span>
+          <button 
+            id="openAdminBtn"
+            class="px-3.5 py-1.5 rounded border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white text-xs font-medium tracking-wide transition-all duration-200 flex items-center gap-2"
+          >
+            <i class="fa-solid fa-plus text-[11px] text-zinc-400"></i>
+            <span>Añadir Foto</span>
+          </button>
+          <button 
+            id="logoutAdminBtn"
+            onclick="toggleAdminMode(false)"
+            class="text-zinc-500 hover:text-zinc-300 text-xs px-1.5 py-1"
+            title="Salir de modo Admin"
+          >
+            <i class="fa-solid fa-power-off"></i>
+          </button>
+        </div>
+
       </div>
 
     </div>
@@ -107,9 +122,14 @@
     <div id="emptyState" class="hidden flex-col items-center justify-center py-24 text-center border border-dashed border-zinc-800 rounded-xl">
       <i class="fa-regular fa-folder-open text-3xl text-zinc-600 mb-3"></i>
       <p class="text-sm text-zinc-400 font-medium">No se encontraron contenidos en esta vista.</p>
-      <button onclick="openFolderView()" class="mt-4 px-4 py-1.5 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-xs text-zinc-200 rounded transition-colors">
-        Volver a las carpetas
-      </button>
+      <div class="flex items-center gap-3 mt-4">
+        <button onclick="openFolderView()" class="px-4 py-1.5 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-xs text-zinc-200 rounded transition-colors">
+          Volver a las carpetas
+        </button>
+        <button onclick="resetGalleryToDefaults()" class="px-4 py-1.5 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-xs text-zinc-400 hover:text-zinc-200 rounded transition-colors">
+          Restaurar carpetas originales
+        </button>
+      </div>
     </div>
 
   </main>
@@ -148,24 +168,71 @@
       <i class="fa-solid fa-chevron-right text-base"></i>
     </button>
 
-    <div class="relative max-w-5xl w-full max-h-[92vh] bg-zinc-950/80 border border-zinc-800/60 rounded-xl overflow-hidden shadow-2xl flex items-center justify-center p-2 sm:p-4 transform scale-95 transition-transform duration-300" id="viewerContent">
+    <div class="relative max-w-[94vw] w-full h-[92vh] max-h-[92vh] bg-zinc-950/95 border border-zinc-800/80 rounded-xl overflow-hidden shadow-2xl flex flex-col transform scale-95 transition-transform duration-300" id="viewerContent">
       
-      <!-- Botón de Cierre -->
-      <button 
-        id="closeViewerBtn" 
-        class="absolute top-4 right-4 z-30 w-9 h-9 rounded-full bg-zinc-950/80 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 flex items-center justify-center transition-colors shadow-xl"
-        title="Cerrar (Esc)"
-      >
-        <i class="fa-solid fa-xmark text-sm"></i>
-      </button>
+      <!-- Barra Superior de Control (Separada de la Imagen) -->
+      <div class="w-full h-12 shrink-0 bg-zinc-950/80 border-b border-zinc-800/60 px-4 flex items-center justify-end gap-3 z-30">
+        
+        <!-- Botón de Spoiler en Visor (Modo Admin) -->
+        <button 
+          id="spoilerViewerBtn" 
+          onclick="togglePhotoSpoilerFromViewer()"
+          class="hidden px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white text-xs font-mono items-center gap-1.5 transition-all shadow-md"
+          title="Marcar o desmarcar spoiler"
+        >
+          <i id="spoilerViewerIcon" class="fa-solid fa-eye-slash text-red-400 text-xs"></i>
+          <span id="spoilerViewerText">Spoiler</span>
+        </button>
 
-      <!-- Área Única de la Foto Ampliada -->
-      <div class="w-full h-full flex items-center justify-center max-h-[88vh]">
+        <!-- Botón de Eliminar en Visor (Modo Admin) -->
+        <button 
+          id="deleteViewerBtn" 
+          onclick="confirmDeleteCapture(event, activeCaptureId)"
+          class="hidden px-3 py-1 rounded-full bg-red-950/80 border border-red-800 text-red-300 hover:text-white hover:bg-red-900 text-xs font-mono items-center gap-1.5 transition-all shadow-md"
+          title="Eliminar esta captura"
+        >
+          <i class="fa-solid fa-trash-can text-red-400 text-xs"></i>
+          <span>Eliminar</span>
+        </button>
+
+        <!-- Botón Pantalla Completa Nativa -->
+        <button 
+          id="fullscreenBtn" 
+          onclick="toggleFullscreenViewer()"
+          class="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 flex items-center justify-center transition-colors shadow-md"
+          title="Pantalla Completa"
+        >
+          <i id="fullscreenIcon" class="fa-solid fa-expand text-xs"></i>
+        </button>
+
+        <!-- Botón de Cierre -->
+        <button 
+          id="closeViewerBtn" 
+          class="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 flex items-center justify-center transition-colors shadow-md"
+          title="Cerrar (Esc)"
+        >
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+      
+      <!-- Texto flotante indicador de bucle (Volviendo al principio / final) -->
+      <div 
+        id="viewerCycleNotice" 
+        class="absolute inset-0 z-40 flex items-center justify-center pointer-events-none opacity-0 transition-opacity duration-300"
+      >
+        <div class="px-5 py-2.5 rounded-full bg-zinc-950/90 border border-zinc-700/80 text-zinc-100 text-xs font-mono tracking-wider shadow-2xl backdrop-blur-md flex items-center gap-2">
+          <i class="fa-solid fa-rotate-left text-amber-400 text-sm"></i>
+          <span id="viewerCycleNoticeText">Volviendo al principio</span>
+        </div>
+      </div>
+
+      <!-- Área Única para la Fotografía (Sin Solapamiento con Botones) -->
+      <div class="flex-grow w-full h-full p-3 sm:p-5 flex items-center justify-center overflow-hidden">
         <img 
           id="viewerImage" 
           src="" 
           alt="" 
-          class="max-w-full max-h-[85vh] object-contain rounded shadow-2xl transition-opacity duration-200"
+          class="max-w-full max-h-full object-contain rounded shadow-2xl transition-opacity duration-200"
         >
       </div>
 
@@ -230,35 +297,63 @@
 
       <form id="adminUploadForm" onsubmit="handleAdminUpload(event)" class="space-y-4">
         <div>
-          <label class="block text-xs font-medium text-zinc-400 mb-1">Nombre del Videojuego (Álbum / Carpeta)</label>
-          <input 
-            type="text" 
-            id="adminGame" 
-            required 
-            placeholder="ej. Elden Ring, Cyberpunk 2077..." 
-            class="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded text-xs text-zinc-200 focus:outline-none focus:border-zinc-600 transition-colors"
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block text-xs font-medium text-zinc-400">Seleccionar Carpeta / Juego</label>
+            <button 
+              type="button" 
+              id="toggleNewGameBtn"
+              onclick="toggleNewGameInput()"
+              class="text-[11px] text-zinc-400 hover:text-white flex items-center gap-1 underline transition-colors"
+            >
+              <i class="fa-solid fa-plus text-[9px]"></i> Crear Nuevo Juego
+            </button>
+          </div>
+
+          <!-- Selector Desplegable Ordenado Alfabéticamente -->
+          <select 
+            id="adminGameSelect" 
+            onchange="handleGameSelectChange(this)"
+            class="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded text-xs text-zinc-200 focus:outline-none focus:border-zinc-600 transition-colors cursor-pointer"
           >
+            <!-- Inyectado dinámicamente desde JS -->
+          </select>
+
+          <!-- Campo para Nombre de Nuevo Juego -->
+          <div id="newGameContainer" class="hidden mt-2">
+            <input 
+              type="text" 
+              id="adminNewGameInput" 
+              placeholder="Escribe el nombre del nuevo videojuego..." 
+              class="w-full px-3 py-2 bg-zinc-950 border border-zinc-700 rounded text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-500 transition-colors"
+            >
+          </div>
         </div>
 
+        <!-- Zona de Arrastrar y Soltar Imágenes (Drag & Drop Multi-Archivo) -->
         <div>
-          <label class="block text-xs font-medium text-zinc-400 mb-1">Título de la captura (Opcional)</label>
-          <input 
-            type="text" 
-            id="adminTitle" 
-            placeholder="ej. Vista desde el acantilado" 
-            class="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded text-xs text-zinc-200 focus:outline-none focus:border-zinc-600 transition-colors"
+          <label class="block text-xs font-medium text-zinc-400 mb-1.5">Imágenes del Álbum</label>
+          <div 
+            id="dropZone" 
+            class="relative border-2 border-dashed border-zinc-800 hover:border-zinc-600 bg-zinc-950/60 hover:bg-zinc-950 rounded-xl p-5 text-center cursor-pointer transition-all duration-200 group"
           >
-        </div>
-
-        <!-- Opción A: Archivo local (Cloudinary Upload) -->
-        <div>
-          <label class="block text-xs font-medium text-zinc-400 mb-1">Seleccionar foto desde tu dispositivo</label>
-          <input 
-            type="file" 
-            id="adminFileInput" 
-            accept="image/*"
-            class="w-full text-xs text-zinc-400 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-zinc-800 file:text-zinc-200 hover:file:bg-zinc-700 cursor-pointer"
-          >
+            <input 
+              type="file" 
+              id="adminFileInput" 
+              accept="image/*" 
+              multiple 
+              class="hidden" 
+            >
+            <div class="flex flex-col items-center justify-center gap-1.5">
+              <div class="w-9 h-9 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 group-hover:text-white group-hover:scale-110 transition-all">
+                <i class="fa-solid fa-images text-sm"></i>
+              </div>
+              <p class="text-xs font-medium text-zinc-300">
+                Arrastra y suelta tus fotos aquí o <span class="text-zinc-100 underline">examina</span>
+              </p>
+              <p class="text-[10px] text-zinc-500 font-mono">Puedes seleccionar varias fotos a la vez</p>
+            </div>
+            <div id="fileListPreview" class="mt-2.5 text-[11px] text-amber-300 font-mono hidden py-1 px-2 rounded bg-amber-950/40 border border-amber-800/40"></div>
+          </div>
         </div>
 
         <!-- Separador O bien URL -->
@@ -277,6 +372,19 @@
           >
         </div>
 
+        <!-- Opción Spoiler -->
+        <div class="flex items-center gap-2 pt-1">
+          <input 
+            type="checkbox" 
+            id="adminIsSpoiler" 
+            class="w-4 h-4 rounded bg-zinc-950 border-zinc-800 text-red-600 focus:ring-0 focus:ring-offset-0 cursor-pointer"
+          >
+          <label for="adminIsSpoiler" class="text-xs text-zinc-300 select-none cursor-pointer flex items-center gap-1.5">
+            <i class="fa-solid fa-eye-slash text-red-400 text-xs"></i>
+            <span>Marcar esta captura como Spoiler</span>
+          </label>
+        </div>
+
         <!-- Mensaje de estado de subida -->
         <div id="uploadStatus" class="hidden text-xs font-mono text-zinc-400 items-center justify-center gap-2 py-1">
           <i class="fa-solid fa-circle-notch fa-spin text-zinc-300"></i>
@@ -293,6 +401,14 @@
         </button>
       </form>
 
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+    <div class="flex items-center gap-2.5 px-4 py-2.5 bg-zinc-900 border border-zinc-700/80 rounded-lg shadow-2xl text-zinc-200 text-xs font-medium">
+      <i id="toastIcon" class="fa-solid fa-star text-amber-400"></i>
+      <span id="toastMessage">Notificación</span>
     </div>
   </div>
 

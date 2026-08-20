@@ -1,46 +1,64 @@
-// Colección de capturas de fotografía virtual (Pura Galería Minimalista)
+// Colección de capturas de fotografía virtual (La Bendición del Modo Foto)
 let captures = [
   {
     id: 1,
-    title: "La Majestad de Leyndell",
-    game: "Elden Ring",
-    imageUrl: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1400&auto=format&fit=crop",
-    date: "24 de Julio, 2026"
+    game: "ASTRO BOT",
+    imageUrl: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=1400&auto=format&fit=crop",
+    date: "2026"
   },
   {
     id: 2,
-    title: "Geometría Nocturna en el Distrito Corporativo",
     game: "Cyberpunk 2077",
     imageUrl: "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=1400&auto=format&fit=crop",
-    date: "20 de Julio, 2026"
+    date: "2026"
   },
   {
     id: 3,
-    title: "Niebla Matutina en las Montañas",
-    game: "Red Dead Redemption 2",
-    imageUrl: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=1400&auto=format&fit=crop",
-    date: "15 de Julio, 2026"
+    game: "DayZ",
+    imageUrl: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=1400&auto=format&fit=crop",
+    date: "2026"
   },
   {
     id: 4,
-    title: "El Silencio sobre las Rocas de Skellige",
-    game: "The Witcher 3",
-    imageUrl: "https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=1400&auto=format&fit=crop",
-    date: "10 de Julio, 2026"
+    game: "God of War Ragnarök",
+    imageUrl: "https://images.unsplash.com/photo-1511447333015-45b65e60f6d5?q=80&w=1400&auto=format&fit=crop",
+    date: "2026"
   },
   {
     id: 5,
-    title: "Ecos del Lago de los Nueve",
-    game: "God of War",
-    imageUrl: "https://images.unsplash.com/photo-1511447333015-45b65e60f6d5?q=80&w=1400&auto=format&fit=crop",
-    date: "05 de Julio, 2026"
+    game: "Laika: Aged Through Blood",
+    imageUrl: "https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=1400&auto=format&fit=crop",
+    date: "2026"
   },
   {
     id: 6,
-    title: "Bruma y Siluetas en la Costa",
-    game: "Ghost of Tsushima",
+    game: "Marvel's Spider-Man 2",
+    imageUrl: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?q=80&w=1400&auto=format&fit=crop",
+    date: "2026"
+  },
+  {
+    id: 7,
+    game: "Modern Warfare 3",
+    imageUrl: "https://images.unsplash.com/photo-1542751110-97427bbecf20?q=80&w=1400&auto=format&fit=crop",
+    date: "2026"
+  },
+  {
+    id: 8,
+    game: "Red Dead Redemption",
+    imageUrl: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=1400&auto=format&fit=crop",
+    date: "2026"
+  },
+  {
+    id: 9,
+    game: "Sea of Thieves",
     imageUrl: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1400&auto=format&fit=crop",
-    date: "01 de Julio, 2026"
+    date: "2026"
+  },
+  {
+    id: 10,
+    game: "Uncharted: Colección Legado de los Ladrones",
+    imageUrl: "https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=1400&auto=format&fit=crop",
+    date: "2026"
   }
 ];
 
@@ -72,8 +90,12 @@ const passwordForm = document.getElementById("passwordForm");
 const adminPasswordInput = document.getElementById("adminPasswordInput");
 const passwordError = document.getElementById("passwordError");
 
-// Hash criptográfico SHA-256 irreversible de la contraseña maestra 'Proyectopropro'
+// Hash criptográfico SHA-256 de 'Proyectopropro'
 const MASTER_PASSWORD_HASH = "737f56f0b1b93d4328e10c687e407aa0f17c15e235d1e44b0ccebe007d0926f4";
+
+// Configuración por defecto de Cloudinary
+let CLOUDINARY_CLOUD_NAME = localStorage.getItem("cloudinary_cloud_name") || "m44qkn0g";
+let CLOUDINARY_UPLOAD_PRESET = localStorage.getItem("cloudinary_preset") || "ml_default";
 
 // Función asíncrona para calcular Hash SHA-256
 async function sha256(message) {
@@ -86,11 +108,19 @@ async function sha256(message) {
 let titleClickCount = 0;
 let titleClickTimer = null;
 
-// Inicialización
-document.addEventListener("DOMContentLoaded", () => {
+// Inicialización segura
+function initApp() {
   loadSavedCaptures();
+  initDragAndDrop();
   checkAdminSession();
+  checkUrlHashNavigation();
   renderApp();
+
+  // Escuchar la flecha Atrás / Adelante del navegador (Historial SPA)
+  window.addEventListener("popstate", () => {
+    checkUrlHashNavigation();
+    renderApp();
+  });
 
   // Listeners del visor modal
   if (closeViewerBtn) closeViewerBtn.addEventListener("click", closeViewerModal);
@@ -134,7 +164,45 @@ document.addEventListener("DOMContentLoaded", () => {
       if (e.target === passwordModal) closePasswordModal();
     });
   }
-});
+}
+
+// Ejecutar initApp inmediatamente si el documento ya cargó
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initApp);
+} else {
+  initApp();
+}
+
+// Cargar capturas personalizadas del almacenamiento local de forma ultra-segura
+function loadSavedCaptures() {
+  try {
+    const savedCaptures = localStorage.getItem("user_custom_captures");
+    if (savedCaptures) {
+      const parsed = JSON.parse(savedCaptures);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const validCaptures = parsed.filter(c => c && c.game && c.imageUrl);
+        if (validCaptures.length > 0) {
+          captures = validCaptures;
+          return;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("Restaurando galería por defecto por datos de localStorage no válidos", e);
+  }
+  // Limpiar memoria residual para garantizar la carga de los 10 juegos
+  try {
+    localStorage.removeItem("user_custom_captures");
+  } catch (err) {}
+}
+
+// Restaurar la galería a los juegos originales por defecto
+function resetGalleryToDefaults() {
+  try {
+    localStorage.removeItem("user_custom_captures");
+  } catch (e) {}
+  location.reload();
+}
 
 // Comprobar si hay sesión admin activa guardada
 function checkAdminSession() {
@@ -144,6 +212,22 @@ function checkAdminSession() {
   } else {
     toggleAdminMode(false);
   }
+}
+
+// Comprobar la URL Hash para la navegación por Historial del Navegador
+function checkUrlHashNavigation() {
+  const hash = window.location.hash;
+  if (hash && hash.startsWith("#album=")) {
+    try {
+      const gameName = decodeURIComponent(hash.replace("#album=", ""));
+      const uniqueGames = Array.from(new Set(captures.map(c => c.game)));
+      if (uniqueGames.includes(gameName)) {
+        currentFolder = gameName;
+        return;
+      }
+    } catch (e) {}
+  }
+  currentFolder = null;
 }
 
 // Solicitar acceso admin
@@ -201,14 +285,28 @@ async function handlePasswordSubmit(event) {
   }
 }
 
+// Helper para escapar HTML en cadenas
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 // Activar/Desactivar modo administración
 function toggleAdminMode(enable) {
+  const publicAdminTrigger = document.getElementById("publicAdminTrigger");
   if (enable) {
     localStorage.setItem("admin_session", "true");
     if (adminContainer) adminContainer.classList.remove("hidden");
+    if (publicAdminTrigger) publicAdminTrigger.classList.add("hidden");
   } else {
     localStorage.removeItem("admin_session");
     if (adminContainer) adminContainer.classList.add("hidden");
+    if (publicAdminTrigger) publicAdminTrigger.classList.remove("hidden");
   }
 }
 
@@ -238,14 +336,25 @@ function renderApp() {
 }
 
 // Abrir vista principal de carpetas
-function openFolderView() {
+function openFolderView(updateHistory = true) {
   currentFolder = null;
+  if (updateHistory) {
+    if (window.location.hash) {
+      history.pushState(null, "", window.location.pathname + window.location.search);
+    }
+  }
   renderApp();
 }
 
-// Abrir una carpeta en específico
-function openFolder(gameName) {
+// Abrir una carpeta en específico con entrada en el Historial del Navegador
+function openFolder(gameName, updateHistory = true) {
   currentFolder = gameName;
+  if (updateHistory) {
+    const hash = "#album=" + encodeURIComponent(gameName);
+    if (window.location.hash !== hash) {
+      history.pushState({ folder: gameName }, "", hash);
+    }
+  }
   renderApp();
 }
 
@@ -321,9 +430,50 @@ function renderFoldersView() {
   }).join("");
 }
 
+// Estado global de spoilers
+let revealedSpoilersPerFolder = {};
+let individuallyRevealedPhotos = {};
+
+// Cambiar la preferencia de revelar spoilers en el álbum activo
+function toggleAlbumSpoilers(revealAll) {
+  if (currentFolder) {
+    revealedSpoilersPerFolder[currentFolder] = revealAll;
+    renderApp();
+  }
+}
+
+// Revelar u ocultar spoiler de una foto individual
+function toggleSinglePhotoSpoilerReveal(event, id) {
+  event.stopPropagation();
+  individuallyRevealedPhotos[id] = !individuallyRevealedPhotos[id];
+  renderApp();
+}
+
+// Marcar / Desmarcar foto como spoiler (Modo Admin)
+function togglePhotoSpoiler(event, id) {
+  event.stopPropagation();
+  const targetCapture = captures.find(c => c.id === id);
+  if (!targetCapture) return;
+
+  targetCapture.isSpoiler = !targetCapture.isSpoiler;
+
+  try {
+    localStorage.setItem("user_custom_captures", JSON.stringify(captures));
+  } catch (e) {}
+
+  const stateText = targetCapture.isSpoiler ? "marcada como Spoiler" : "desmarcada de Spoiler";
+  showToast(`Foto ${stateText}`, "fa-solid fa-eye-slash text-red-400");
+  renderApp();
+}
+
 // 2. RENDERIZAR FOTOS DENTRO DE LA CARPETA SELECCIONADA
 function renderPhotosInFolderView() {
   const photos = captures.filter(item => item.game === currentFolder);
+  const isAdmin = localStorage.getItem("admin_session") === "true";
+  const currentCoverId = photos.length > 0 ? photos[0].id : null;
+  
+  const hasSpoilers = photos.some(p => p.isSpoiler);
+  const areAlbumSpoilersRevealed = revealedSpoilersPerFolder[currentFolder] === true;
 
   navigationHeader.innerHTML = `
     <div class="flex items-center gap-3">
@@ -341,31 +491,269 @@ function renderPhotosInFolderView() {
   `;
 
   if (photos.length === 0) {
-    mainGrid.innerHTML = "";
-    emptyState.classList.remove("hidden");
-    emptyState.classList.add("flex");
+    currentFolder = null;
+    renderFoldersView();
     return;
   }
 
   emptyState.classList.add("hidden");
   emptyState.classList.remove("flex");
 
-  mainGrid.innerHTML = photos.map(item => {
+  // Generar aviso rojo de spoilers si el álbum contiene capturas marcadas
+  let spoilerBannerHTML = "";
+  if (hasSpoilers) {
+    spoilerBannerHTML = `
+      <div class="col-span-full mb-2 p-4 rounded-xl bg-red-950/40 border border-red-900/60 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-4 text-red-200 shadow-xl">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full bg-red-950/80 border border-red-800 flex items-center justify-center text-red-400 shrink-0">
+            <i class="fa-solid fa-triangle-exclamation text-sm"></i>
+          </div>
+          <div>
+            <h4 class="text-xs font-semibold text-red-200 uppercase tracking-wider">¡Atención! Este álbum contiene capturas con Spoilers</h4>
+            <p class="text-[11px] text-red-300/80 mt-0.5">
+              ${areAlbumSpoilersRevealed ? 'Los spoilers están actualmente visibles.' : 'Las imágenes con spoiler se muestran desenfocadas para proteger tu experiencia.'}
+            </p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          ${areAlbumSpoilersRevealed ? `
+            <button 
+              onclick="toggleAlbumSpoilers(false)" 
+              class="px-3 py-1.5 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-xs font-medium text-zinc-300 hover:text-white transition-all shadow flex items-center gap-1.5"
+            >
+              <i class="fa-solid fa-eye-slash text-red-400 text-xs"></i> Ocultar Spoilers
+            </button>
+          ` : `
+            <button 
+              onclick="toggleAlbumSpoilers(true)" 
+              class="px-3 py-1.5 rounded bg-red-900/90 hover:bg-red-800 border border-red-700 text-xs font-semibold text-white transition-all shadow-md flex items-center gap-1.5"
+            >
+              <i class="fa-solid fa-eye text-xs"></i> Ver Spoilers
+            </button>
+          `}
+        </div>
+      </div>
+    `;
+  }
+
+  const cardsHTML = photos.map(item => {
+    const isCurrentCover = item.id === currentCoverId;
+    const isPhotoBlurred = item.isSpoiler && !areAlbumSpoilersRevealed && !individuallyRevealedPhotos[item.id];
+
+    let adminButtonHTML = "";
+    if (isAdmin) {
+      const coverBtn = isCurrentCover ? `
+        <span class="bg-zinc-950/90 border border-amber-500/50 text-amber-300 text-[10px] font-mono px-2 py-0.5 rounded shadow-lg backdrop-blur-md flex items-center gap-1">
+          <i class="fa-solid fa-star text-amber-400 text-[9px]"></i> Portada
+        </span>
+      ` : `
+        <button 
+          onclick="setAsFolderCover(event, ${item.id})"
+          title="Establecer como portada"
+          class="opacity-0 group-hover:opacity-100 bg-zinc-950/90 border border-zinc-700 hover:border-amber-400 text-zinc-300 hover:text-white px-2 py-0.5 rounded text-[10px] font-mono flex items-center gap-1 shadow-xl backdrop-blur-md transition-all"
+        >
+          <i class="fa-solid fa-star text-amber-400 text-[9px]"></i> Fijar Portada
+        </button>
+      `;
+
+      const spoilerBtn = item.isSpoiler ? `
+        <button 
+          onclick="togglePhotoSpoiler(event, ${item.id})"
+          title="Quitar marca de spoiler"
+          class="bg-red-950/90 border border-red-700 hover:bg-red-900 text-red-300 text-[10px] font-mono px-2 py-0.5 rounded shadow-lg backdrop-blur-md flex items-center gap-1 transition-all"
+        >
+          <i class="fa-solid fa-eye-slash text-red-400 text-[9px]"></i> Spoiler ON
+        </button>
+      ` : `
+        <button 
+          onclick="togglePhotoSpoiler(event, ${item.id})"
+          title="Marcar como spoiler"
+          class="opacity-0 group-hover:opacity-100 bg-zinc-950/90 border border-zinc-800 hover:border-red-500 text-zinc-400 hover:text-red-300 text-[10px] font-mono px-2 py-0.5 rounded shadow-lg backdrop-blur-md transition-all"
+        >
+          <i class="fa-solid fa-eye-slash text-red-400 text-[9px]"></i> Marcar Spoiler
+        </button>
+      `;
+
+      const deleteBtn = `
+        <button 
+          onclick="confirmDeleteCapture(event, ${item.id})"
+          title="Eliminar esta captura"
+          class="opacity-0 group-hover:opacity-100 bg-red-950/90 hover:bg-red-900 border border-red-800 text-red-200 hover:text-white px-2 py-0.5 rounded text-[10px] font-mono flex items-center gap-1 shadow-xl backdrop-blur-md transition-all"
+        >
+          <i class="fa-solid fa-trash-can text-red-400 text-[9px]"></i> Eliminar
+        </button>
+      `;
+
+      adminButtonHTML = `
+        <div class="absolute top-2 right-2 z-30 flex items-center gap-1.5">
+          ${coverBtn}
+          ${spoilerBtn}
+          ${deleteBtn}
+        </div>
+      `;
+    }
+
+    // Overlay de desenfoque de Spoiler
+    let spoilerOverlayHTML = "";
+    if (isPhotoBlurred) {
+      spoilerOverlayHTML = `
+        <div 
+          onclick="toggleSinglePhotoSpoilerReveal(event, ${item.id})"
+          class="absolute inset-0 z-20 flex flex-col items-center justify-center p-3 bg-zinc-950/70 backdrop-blur-xs text-center cursor-pointer group-hover:bg-zinc-950/50 transition-colors"
+          title="Haz clic para revelar esta captura"
+        >
+          <span class="px-3 py-1 rounded bg-red-950/90 border border-red-800 text-red-200 text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 shadow-xl">
+            <i class="fa-solid fa-eye-slash text-red-400 text-xs"></i> Spoiler
+          </span>
+          <span class="text-[10px] text-zinc-400 mt-1.5 font-mono">Clic para revelar</span>
+        </div>
+      `;
+    }
+
     return `
       <article 
-        onclick="openViewerModal(${item.id})"
+        onclick="${isPhotoBlurred ? `toggleSinglePhotoSpoilerReveal(event, ${item.id})` : `openViewerModal(${item.id})`}"
         class="relative overflow-hidden rounded-lg aspect-[16/10] bg-black group cursor-pointer border border-zinc-800/80 hover:border-zinc-500 transition-all duration-300 shadow-md"
       >
         <img 
           src="${item.imageUrl}" 
           alt="" 
-          class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100"
+          class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${isPhotoBlurred ? 'blur-lg scale-105 opacity-60' : 'opacity-90 group-hover:opacity-100'}"
           loading="lazy"
         >
         <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors"></div>
+        ${spoilerOverlayHTML}
+        ${adminButtonHTML}
       </article>
     `;
   }).join("");
+
+  mainGrid.innerHTML = spoilerBannerHTML + cardsHTML;
+}
+
+// Eliminar una captura con confirmación (Modo Admin)
+function confirmDeleteCapture(event, id) {
+  if (event) event.stopPropagation();
+  if (id === null || id === undefined) return;
+
+  const captureToDelete = captures.find(c => c.id === id);
+  if (!captureToDelete) return;
+
+  const gameName = captureToDelete.game;
+
+  if (confirm(`¿Estás seguro de que deseas eliminar esta captura de "${gameName}"?`)) {
+    captures = captures.filter(c => c.id !== id);
+
+    try {
+      localStorage.setItem("user_custom_captures", JSON.stringify(captures));
+    } catch (e) {}
+
+    if (viewerModal && !viewerModal.classList.contains("hidden")) {
+      closeViewerModal();
+    }
+
+    showToast(`Foto eliminada de "${gameName}"`, "fa-solid fa-trash-can text-red-400");
+    renderApp();
+  }
+}
+
+// Establecer una foto como portada del álbum (Modo Admin)
+function setAsFolderCover(event, id) {
+  event.stopPropagation(); // Evitar abrir el visor al hacer clic en el botón de portada
+
+  const targetIndex = captures.findIndex(c => c.id === id);
+  if (targetIndex === -1) return;
+
+  const targetCapture = captures[targetIndex];
+  const gameName = targetCapture.game;
+
+  // Extraer el elemento de su posición actual
+  captures.splice(targetIndex, 1);
+
+  // Encontrar el primer elemento que pertenezca al mismo juego e insertarlo antes
+  const firstIndexForGame = captures.findIndex(c => c.game === gameName);
+
+  if (firstIndexForGame !== -1) {
+    captures.splice(firstIndexForGame, 0, targetCapture);
+  } else {
+    captures.unshift(targetCapture);
+  }
+
+  // Guardar cambio en localStorage
+  try {
+    localStorage.setItem("user_custom_captures", JSON.stringify(captures));
+  } catch (e) {}
+
+  showToast(`¡Portada de "${gameName}" actualizada!`);
+  renderApp();
+}
+
+// Mostrar notificación Toast discreta
+function showToast(message, iconClass = "fa-solid fa-star text-amber-400") {
+  const toast = document.getElementById("toast");
+  const toastMessage = document.getElementById("toastMessage");
+  const toastIcon = document.getElementById("toastIcon");
+
+  if (!toast || !toastMessage) return;
+
+  toastMessage.textContent = message;
+  if (toastIcon) toastIcon.className = iconClass;
+
+  toast.classList.remove("translate-y-20", "opacity-0");
+  toast.classList.add("translate-y-0", "opacity-100");
+
+  setTimeout(() => {
+    toast.classList.remove("translate-y-0", "opacity-100");
+    toast.classList.add("translate-y-20", "opacity-0");
+  }, 2500);
+}
+
+// Actualizar estado de los botones de administración dentro del visor (Eliminar y Spoiler)
+function updateViewerAdminButtons() {
+  const deleteViewerBtn = document.getElementById("deleteViewerBtn");
+  const spoilerViewerBtn = document.getElementById("spoilerViewerBtn");
+  const spoilerViewerText = document.getElementById("spoilerViewerText");
+  const isAdmin = localStorage.getItem("admin_session") === "true";
+
+  if (!isAdmin) {
+    if (deleteViewerBtn) { deleteViewerBtn.classList.add("hidden"); deleteViewerBtn.classList.remove("flex"); }
+    if (spoilerViewerBtn) { spoilerViewerBtn.classList.add("hidden"); spoilerViewerBtn.classList.remove("flex"); }
+    return;
+  }
+
+  if (deleteViewerBtn) { deleteViewerBtn.classList.remove("hidden"); deleteViewerBtn.classList.add("flex"); }
+
+  const item = captures.find(c => c.id === activeCaptureId);
+  if (spoilerViewerBtn && item) {
+    spoilerViewerBtn.classList.remove("hidden");
+    spoilerViewerBtn.classList.add("flex");
+
+    if (item.isSpoiler) {
+      spoilerViewerBtn.className = "flex px-3 py-1 rounded-full bg-red-950/90 border border-red-700 text-red-200 text-xs font-mono items-center gap-1.5 transition-all shadow-md cursor-pointer";
+      if (spoilerViewerText) spoilerViewerText.textContent = "Spoiler ON";
+    } else {
+      spoilerViewerBtn.className = "flex px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white text-xs font-mono items-center gap-1.5 transition-all shadow-md cursor-pointer";
+      if (spoilerViewerText) spoilerViewerText.textContent = "Marcar Spoiler";
+    }
+  }
+}
+
+// Marcar o desmarcar spoiler directamente desde el visor de pantalla completa
+function togglePhotoSpoilerFromViewer() {
+  if (activeCaptureId === null) return;
+  const targetCapture = captures.find(c => c.id === activeCaptureId);
+  if (!targetCapture) return;
+
+  targetCapture.isSpoiler = !targetCapture.isSpoiler;
+
+  try {
+    localStorage.setItem("user_custom_captures", JSON.stringify(captures));
+  } catch (e) {}
+
+  const stateText = targetCapture.isSpoiler ? "marcada como Spoiler" : "desmarcada de Spoiler";
+  showToast(`Foto ${stateText}`, "fa-solid fa-eye-slash text-red-400");
+  updateViewerAdminButtons();
+  renderApp();
 }
 
 // Abrir Modal de Visor Ampliado (Sólo Imagen en Grande)
@@ -374,10 +762,11 @@ function openViewerModal(id) {
   if (!item) return;
 
   activeCaptureId = id;
+  updateViewerAdminButtons();
 
   if (viewerImage) {
     viewerImage.src = item.imageUrl;
-    viewerImage.alt = item.title;
+    viewerImage.alt = item.title || "";
   }
 
   if (viewerModal) {
@@ -393,6 +782,10 @@ function openViewerModal(id) {
 
 // Cerrar Modal de Visor
 function closeViewerModal() {
+  if (document.fullscreenElement) {
+    if (document.exitFullscreen) document.exitFullscreen();
+  }
+
   if (viewerModal) {
     viewerModal.classList.add("opacity-0");
     viewerContent?.classList.add("scale-95");
@@ -404,11 +797,63 @@ function closeViewerModal() {
   }
 }
 
+// Activar / Desactivar pantalla completa nativa del navegador
+function toggleFullscreenViewer() {
+  const viewerModal = document.getElementById("viewerModal");
+  const icon = document.getElementById("fullscreenIcon");
+
+  if (!document.fullscreenElement) {
+    if (viewerModal?.requestFullscreen) {
+      viewerModal.requestFullscreen();
+    } else if (viewerModal?.webkitRequestFullscreen) {
+      viewerModal.webkitRequestFullscreen();
+    }
+    if (icon) icon.className = "fa-solid fa-compress text-xs";
+  } else {
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+    } else if (document.webkitExitFullscreen) {
+      document.webkitExitFullscreen();
+    }
+    if (icon) icon.className = "fa-solid fa-expand text-xs";
+  }
+}
+
+// Escuchar cambios de estado en la pantalla completa del sistema
+document.addEventListener("fullscreenchange", () => {
+  const icon = document.getElementById("fullscreenIcon");
+  if (icon) {
+    if (document.fullscreenElement) {
+      icon.className = "fa-solid fa-compress text-xs";
+    } else {
+      icon.className = "fa-solid fa-expand text-xs";
+    }
+  }
+});
+
+// Mostrar aviso de ciclo al volver al principio o final en el visor
+let cycleNoticeTimer = null;
+function showViewerCycleNotice(message) {
+  const notice = document.getElementById("viewerCycleNotice");
+  const noticeText = document.getElementById("viewerCycleNoticeText");
+
+  if (!notice || !noticeText) return;
+
+  noticeText.textContent = message;
+  notice.classList.remove("opacity-0");
+  notice.classList.add("opacity-100");
+
+  clearTimeout(cycleNoticeTimer);
+  cycleNoticeTimer = setTimeout(() => {
+    notice.classList.remove("opacity-100");
+    notice.classList.add("opacity-0");
+  }, 1100);
+}
+
 // Navegar entre capturas del álbum (Flecha Izquierda / Derecha)
 function navigateViewer(direction) {
   if (activeCaptureId === null) return;
 
-  // Filtrar fotos pertenecientes al álbum activo (o todas las fotos si no hay álbum activo)
   const currentPhotos = currentFolder !== null 
     ? captures.filter(c => c.game === currentFolder)
     : captures;
@@ -418,12 +863,18 @@ function navigateViewer(direction) {
   let currentIndex = currentPhotos.findIndex(c => c.id === activeCaptureId);
   if (currentIndex === -1) currentIndex = 0;
 
-  // Calcular siguiente/anterior de forma cíclica
+  // Detectar ciclo de principio o final de álbum
+  if (direction === 1 && currentIndex === currentPhotos.length - 1) {
+    showViewerCycleNotice("Volviendo al principio");
+  } else if (direction === -1 && currentIndex === 0) {
+    showViewerCycleNotice("Volviendo al final");
+  }
+
   const newIndex = (currentIndex + direction + currentPhotos.length) % currentPhotos.length;
   const nextCapture = currentPhotos[newIndex];
   activeCaptureId = nextCapture.id;
+  updateViewerAdminButtons();
 
-  // Transición suave de opacidad
   if (viewerImage) {
     viewerImage.classList.add("opacity-40");
     setTimeout(() => {
@@ -434,8 +885,71 @@ function navigateViewer(direction) {
   }
 }
 
+// Poblar selector desplegable de juegos ordenado alfabéticamente
+function populateAdminGameSelect() {
+  const adminGameSelect = document.getElementById("adminGameSelect");
+  const newGameContainer = document.getElementById("newGameContainer");
+  const adminNewGameInput = document.getElementById("adminNewGameInput");
+
+  if (!adminGameSelect) return;
+
+  // Obtener nombres de juegos únicos y ordenarlos alfabéticamente
+  const uniqueGames = Array.from(new Set(captures.map(c => c.game)));
+  uniqueGames.sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base", numeric: true }));
+
+  let optionsHTML = uniqueGames.map(game => `<option value="${escapeHtml(game)}">${escapeHtml(game)}</option>`).join("");
+  optionsHTML += `<option value="__NEW_GAME__">+ Crear Nuevo Juego / Carpeta...</option>`;
+
+  adminGameSelect.innerHTML = optionsHTML;
+
+  // Si hay una carpeta seleccionada actualmente en la galería, seleccionarla por defecto
+  if (currentFolder && uniqueGames.includes(currentFolder)) {
+    adminGameSelect.value = currentFolder;
+    if (newGameContainer) newGameContainer.classList.add("hidden");
+  } else if (uniqueGames.length > 0) {
+    adminGameSelect.selectedIndex = 0;
+    if (newGameContainer) newGameContainer.classList.add("hidden");
+  } else {
+    adminGameSelect.value = "__NEW_GAME__";
+    if (newGameContainer) newGameContainer.classList.remove("hidden");
+  }
+  if (adminNewGameInput) adminNewGameInput.value = "";
+}
+
+// Al cambiar opción en el desplegable de juegos
+function handleGameSelectChange(selectElem) {
+  const newGameContainer = document.getElementById("newGameContainer");
+  const adminNewGameInput = document.getElementById("adminNewGameInput");
+
+  if (selectElem.value === "__NEW_GAME__") {
+    if (newGameContainer) newGameContainer.classList.remove("hidden");
+    if (adminNewGameInput) adminNewGameInput.focus();
+  } else {
+    if (newGameContainer) newGameContainer.classList.add("hidden");
+  }
+}
+
+// Alternar entre desplegable de juegos y crear nuevo juego
+function toggleNewGameInput() {
+  const adminGameSelect = document.getElementById("adminGameSelect");
+  const newGameContainer = document.getElementById("newGameContainer");
+  const adminNewGameInput = document.getElementById("adminNewGameInput");
+
+  if (!adminGameSelect || !newGameContainer) return;
+
+  if (newGameContainer.classList.contains("hidden")) {
+    adminGameSelect.value = "__NEW_GAME__";
+    newGameContainer.classList.remove("hidden");
+    if (adminNewGameInput) adminNewGameInput.focus();
+  } else {
+    adminGameSelect.selectedIndex = 0;
+    newGameContainer.classList.add("hidden");
+  }
+}
+
 // Abrir Modal de Administración
 function openAdminModal() {
+  populateAdminGameSelect();
   adminModal.classList.remove("hidden");
   setTimeout(() => {
     adminModal.classList.remove("opacity-0");
@@ -450,108 +964,184 @@ function closeAdminModal() {
   setTimeout(() => {
     adminModal.classList.add("hidden");
     adminUploadForm.reset();
+    document.getElementById("newGameContainer")?.classList.add("hidden");
   }, 300);
 }
 
-// Configuración por defecto de Cloudinary
-let CLOUDINARY_CLOUD_NAME = localStorage.getItem("cloudinary_cloud_name") || "m44qkn0g";
-let CLOUDINARY_UPLOAD_PRESET = localStorage.getItem("cloudinary_preset") || "ml_default";
+// Inicializar zona de Drag & Drop para subida múltiple
+function initDragAndDrop() {
+  const dropZone = document.getElementById("dropZone");
+  const fileInput = document.getElementById("adminFileInput");
 
-// Cargar capturas personalizadas del almacenamiento local si existen
-function loadSavedCaptures() {
-  const savedCaptures = localStorage.getItem("user_custom_captures");
-  if (savedCaptures) {
-    try {
-      const parsed = JSON.parse(savedCaptures);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        captures = parsed;
-      }
-    } catch (e) {}
+  if (!dropZone || !fileInput) return;
+
+  fileInput.addEventListener("change", updateFilePreview);
+
+  ["dragenter", "dragover"].forEach(eventName => {
+    dropZone.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropZone.classList.add("border-amber-400", "bg-zinc-900");
+    }, false);
+  });
+
+  ["dragleave", "drop"].forEach(eventName => {
+    dropZone.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropZone.classList.remove("border-amber-400", "bg-zinc-900");
+    }, false);
+  });
+
+  dropZone.addEventListener("drop", (e) => {
+    const dt = e.dataTransfer;
+    if (dt && dt.files && dt.files.length > 0) {
+      fileInput.files = dt.files;
+      updateFilePreview();
+    }
+  });
+}
+
+// Actualizar texto de vista previa de archivos seleccionados
+function updateFilePreview() {
+  const fileInput = document.getElementById("adminFileInput");
+  const preview = document.getElementById("fileListPreview");
+
+  if (!fileInput || !preview) return;
+
+  const count = fileInput.files ? fileInput.files.length : 0;
+  if (count > 0) {
+    preview.classList.remove("hidden");
+    if (count === 1) {
+      preview.textContent = `📷 1 foto seleccionada: ${fileInput.files[0].name}`;
+    } else {
+      preview.textContent = `📁 ${count} fotos seleccionadas para subir en lote`;
+    }
+  } else {
+    preview.classList.add("hidden");
+    preview.textContent = "";
   }
 }
 
-// Configurar claves de Cloudinary (Opcional desde consola o panel)
-function setCloudinaryConfig(cloudName, uploadPreset) {
-  CLOUDINARY_CLOUD_NAME = cloudName;
-  CLOUDINARY_UPLOAD_PRESET = uploadPreset;
-  localStorage.setItem("cloudinary_cloud_name", cloudName);
-  localStorage.setItem("cloudinary_preset", uploadPreset);
-}
-
-// Manejar la adición de una captura desde Administración (Soporta Nube Cloudinary, Archivo Local y URL)
+// Manejar la adición de una o varias capturas desde Administración (Subida Múltiple en Lote)
 async function handleAdminUpload(event) {
   event.preventDefault();
 
-  const game = document.getElementById("adminGame").value.trim();
-  const title = document.getElementById("adminTitle").value.trim() || game;
+  const adminGameSelect = document.getElementById("adminGameSelect");
+  const adminNewGameInput = document.getElementById("adminNewGameInput");
+  
+  let game = "";
+  if (adminGameSelect && adminGameSelect.value !== "__NEW_GAME__") {
+    game = adminGameSelect.value;
+  } else if (adminNewGameInput) {
+    game = adminNewGameInput.value.trim();
+  }
+
+  if (!game) {
+    alert("Por favor, selecciona un juego de la lista o escribe el nombre del nuevo videojuego.");
+    return;
+  }
+
   const fileInput = document.getElementById("adminFileInput");
   const urlInput = document.getElementById("adminUrl");
   const uploadStatus = document.getElementById("uploadStatus");
   const uploadStatusText = document.getElementById("uploadStatusText");
   const submitBtn = document.getElementById("adminSubmitBtn");
+  const isSpoilerCheckbox = document.getElementById("adminIsSpoiler");
+  const isSpoiler = isSpoilerCheckbox ? isSpoilerCheckbox.checked : false;
 
-  if (!game) return;
+  const files = fileInput && fileInput.files ? Array.from(fileInput.files) : [];
 
-  let finalImageUrl = urlInput ? urlInput.value.trim() : "";
-
-  // Si el usuario seleccionó un archivo local de imagen desde su dispositivo
-  if (fileInput && fileInput.files && fileInput.files[0]) {
-    const file = fileInput.files[0];
-
-    // Si Cloudinary está configurado, subir directamente a la nube
-    if (CLOUDINARY_CLOUD_NAME && CLOUDINARY_UPLOAD_PRESET) {
-      try {
-        if (uploadStatus) {
-          uploadStatus.classList.remove("hidden");
-          uploadStatus.classList.add("flex");
-          if (uploadStatusText) uploadStatusText.textContent = "Optimizando y subiendo foto a Cloudinary...";
-        }
-        if (submitBtn) submitBtn.disabled = true;
-
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-
-        const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
-          method: "POST",
-          body: formData
-        });
-
-        if (!res.ok) throw new Error("Error en servidor Cloudinary");
-        const data = await res.json();
-        finalImageUrl = data.secure_url;
-      } catch (err) {
-        console.warn("Cloudinary error, aplicando fallback a DataURL local", err);
-        finalImageUrl = await readFileAsDataURL(file);
-      } finally {
-        if (uploadStatus) uploadStatus.classList.add("hidden");
-        if (submitBtn) submitBtn.disabled = false;
-      }
-    } else {
-      // Si aún no se configuraron claves de Cloudinary, genera vista previa inmediata del archivo local
-      finalImageUrl = await readFileAsDataURL(file);
+  if (files.length > 0) {
+    if (uploadStatus) {
+      uploadStatus.classList.remove("hidden");
+      uploadStatus.classList.add("flex");
     }
-  }
+    if (submitBtn) submitBtn.disabled = true;
 
-  if (!finalImageUrl) {
-    alert("Por favor, selecciona un archivo de imagen desde tu dispositivo o pega una URL válida.");
+    let successCount = 0;
+
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (uploadStatusText) {
+          uploadStatusText.textContent = files.length === 1 
+            ? "Optimizando y subiendo foto a Cloudinary..." 
+            : `Subiendo foto ${i + 1} de ${files.length} a Cloudinary...`;
+        }
+
+        let uploadedUrl = "";
+        if (CLOUDINARY_CLOUD_NAME && CLOUDINARY_UPLOAD_PRESET) {
+          try {
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+            const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+              method: "POST",
+              body: formData
+            });
+
+            if (!res.ok) throw new Error("Error en servidor Cloudinary");
+            const data = await res.json();
+            uploadedUrl = data.secure_url;
+          } catch (err) {
+            console.warn("Cloudinary error, aplicando fallback a DataURL", err);
+            uploadedUrl = await readFileAsDataURL(file);
+          }
+        } else {
+          uploadedUrl = await readFileAsDataURL(file);
+        }
+
+        if (uploadedUrl) {
+          const newCapture = {
+            id: Date.now() + i,
+            game: game,
+            imageUrl: uploadedUrl,
+            isSpoiler: isSpoiler,
+            date: "2026"
+          };
+          captures.unshift(newCapture);
+          successCount++;
+        }
+      }
+
+      // Guardar en el almacenamiento local para persistencia
+      try {
+        localStorage.setItem("user_custom_captures", JSON.stringify(captures));
+      } catch (e) {}
+
+      showToast(`¡${successCount} ${successCount === 1 ? 'captura publicada' : 'capturas publicadas'} en "${game}"!`, "fa-solid fa-cloud-arrow-up text-amber-400");
+    } finally {
+      if (uploadStatus) uploadStatus.classList.add("hidden");
+      if (submitBtn) submitBtn.disabled = false;
+      if (isSpoilerCheckbox) isSpoilerCheckbox.checked = false;
+      if (fileInput) fileInput.value = "";
+      updateFilePreview();
+    }
+  } else if (urlInput && urlInput.value.trim()) {
+    const finalImageUrl = urlInput.value.trim();
+
+    const newCapture = {
+      id: Date.now(),
+      game: game,
+      imageUrl: finalImageUrl,
+      isSpoiler: isSpoiler,
+      date: "2026"
+    };
+
+    captures.unshift(newCapture);
+
+    try {
+      localStorage.setItem("user_custom_captures", JSON.stringify(captures));
+    } catch (e) {}
+
+    showToast(`¡Captura publicada en "${game}"!`, "fa-solid fa-cloud-arrow-up text-amber-400");
+    if (isSpoilerCheckbox) isSpoilerCheckbox.checked = false;
+  } else {
+    alert("Por favor, arrastra una o varias fotos o pega una URL válida.");
     return;
   }
-
-  const newCapture = {
-    id: Date.now(),
-    title: title,
-    game: game,
-    imageUrl: finalImageUrl,
-    date: "Hoy"
-  };
-
-  captures.unshift(newCapture);
-
-  // Guardar en el almacenamiento local para persistencia
-  try {
-    localStorage.setItem("user_custom_captures", JSON.stringify(captures));
-  } catch (e) {}
 
   currentFolder = game;
   renderApp();
