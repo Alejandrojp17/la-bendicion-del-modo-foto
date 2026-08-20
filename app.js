@@ -107,10 +107,10 @@ async function initApp() {
 
 
 
-// Cargar capturas desde el archivo independiente captures.json o almacenamiento local
+// Cargar capturas desde la base de datos oficial captures.json de forma prioritaria
 async function loadSavedCaptures() {
   try {
-    const res = await fetch("./captures.json");
+    const res = await fetch("./captures.json?v=" + Date.now());
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
@@ -119,22 +119,8 @@ async function loadSavedCaptures() {
       }
     }
   } catch (e) {
-    console.warn("Nota: leyendo de localStorage o fallback por defecto", e);
+    console.warn("Nota: usando fallback por defecto", e);
   }
-
-  try {
-    const savedCaptures = localStorage.getItem("user_custom_captures");
-    if (savedCaptures) {
-      const parsed = JSON.parse(savedCaptures);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        const validCaptures = parsed.filter(c => c && c.game && c.imageUrl);
-        if (validCaptures.length > 0) {
-          captures = validCaptures;
-          return;
-        }
-      }
-    }
-  } catch (e) {}
 
   captures = [...DEFAULT_INITIAL_CAPTURES];
 }
