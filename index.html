@@ -230,43 +230,66 @@
 
       <form id="adminUploadForm" onsubmit="handleAdminUpload(event)" class="space-y-4">
         <div>
-          <label class="block text-xs font-medium text-zinc-400 mb-1">Título de la captura</label>
-          <input 
-            type="text" 
-            id="adminTitle" 
-            required 
-            placeholder="ej. La Majestad de Leyndell" 
-            class="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded text-xs text-zinc-200 focus:outline-none focus:border-zinc-600 transition-colors"
-          >
-        </div>
-
-        <div>
-          <label class="block text-xs font-medium text-zinc-400 mb-1">Nombre del Videojuego</label>
+          <label class="block text-xs font-medium text-zinc-400 mb-1">Nombre del Videojuego (Álbum / Carpeta)</label>
           <input 
             type="text" 
             id="adminGame" 
             required 
-            placeholder="ej. Elden Ring" 
+            placeholder="ej. Elden Ring, Cyberpunk 2077..." 
             class="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded text-xs text-zinc-200 focus:outline-none focus:border-zinc-600 transition-colors"
           >
         </div>
 
         <div>
-          <label class="block text-xs font-medium text-zinc-400 mb-1">URL de la Imagen (Alta Resolución)</label>
+          <label class="block text-xs font-medium text-zinc-400 mb-1">Título de la captura (Opcional)</label>
+          <input 
+            type="text" 
+            id="adminTitle" 
+            placeholder="ej. Vista desde el acantilado" 
+            class="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded text-xs text-zinc-200 focus:outline-none focus:border-zinc-600 transition-colors"
+          >
+        </div>
+
+        <!-- Opción A: Archivo local (Cloudinary Upload) -->
+        <div>
+          <label class="block text-xs font-medium text-zinc-400 mb-1">Seleccionar foto desde tu dispositivo</label>
+          <input 
+            type="file" 
+            id="adminFileInput" 
+            accept="image/*"
+            class="w-full text-xs text-zinc-400 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-zinc-800 file:text-zinc-200 hover:file:bg-zinc-700 cursor-pointer"
+          >
+        </div>
+
+        <!-- Separador O bien URL -->
+        <div class="flex items-center my-2">
+          <div class="flex-grow border-t border-zinc-800"></div>
+          <span class="px-2 text-[10px] text-zinc-500 uppercase tracking-wider">O pega una URL</span>
+          <div class="flex-grow border-t border-zinc-800"></div>
+        </div>
+
+        <div>
           <input 
             type="url" 
             id="adminUrl" 
-            required 
             placeholder="https://images.unsplash.com/..." 
             class="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded text-xs text-zinc-200 focus:outline-none focus:border-zinc-600 transition-colors"
           >
         </div>
 
+        <!-- Mensaje de estado de subida -->
+        <div id="uploadStatus" class="hidden text-xs font-mono text-zinc-400 items-center justify-center gap-2 py-1">
+          <i class="fa-solid fa-circle-notch fa-spin text-zinc-300"></i>
+          <span id="uploadStatusText">Subiendo foto a Cloudinary...</span>
+        </div>
+
         <button 
           type="submit" 
-          class="w-full py-2.5 bg-zinc-100 hover:bg-white text-zinc-950 text-xs font-semibold rounded transition-colors mt-2"
+          id="adminSubmitBtn"
+          class="w-full py-2.5 bg-zinc-100 hover:bg-white text-zinc-950 text-xs font-semibold rounded transition-colors mt-2 flex items-center justify-center gap-2"
         >
-          Publicar en el Portfolio
+          <i class="fa-solid fa-cloud-arrow-up text-xs"></i>
+          <span>Publicar Captura</span>
         </button>
       </form>
 

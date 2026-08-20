@@ -88,6 +88,7 @@ let titleClickTimer = null;
 
 // Inicialización
 document.addEventListener("DOMContentLoaded", () => {
+  loadSavedCaptures();
   checkAdminSession();
   renderApp();
 
@@ -452,27 +453,116 @@ function closeAdminModal() {
   }, 300);
 }
 
-// Manejar la adición de una captura desde Administración
-function handleAdminUpload(event) {
+// Configuración por defecto de Cloudinary
+let CLOUDINARY_CLOUD_NAME = localStorage.getItem("cloudinary_cloud_name") || "m44qkn0g";
+let CLOUDINARY_UPLOAD_PRESET = localStorage.getItem("cloudinary_preset") || "ml_default";
+
+// Cargar capturas personalizadas del almacenamiento local si existen
+function loadSavedCaptures() {
+  const savedCaptures = localStorage.getItem("user_custom_captures");
+  if (savedCaptures) {
+    try {
+      const parsed = JSON.parse(savedCaptures);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        captures = parsed;
+      }
+    } catch (e) {}
+  }
+}
+
+// Configurar claves de Cloudinary (Opcional desde consola o panel)
+function setCloudinaryConfig(cloudName, uploadPreset) {
+  CLOUDINARY_CLOUD_NAME = cloudName;
+  CLOUDINARY_UPLOAD_PRESET = uploadPreset;
+  localStorage.setItem("cloudinary_cloud_name", cloudName);
+  localStorage.setItem("cloudinary_preset", uploadPreset);
+}
+
+// Manejar la adición de una captura desde Administración (Soporta Nube Cloudinary, Archivo Local y URL)
+async function handleAdminUpload(event) {
   event.preventDefault();
 
-  const title = document.getElementById("adminTitle").value.trim();
   const game = document.getElementById("adminGame").value.trim();
-  const imageUrl = document.getElementById("adminUrl").value.trim();
+  const title = document.getElementById("adminTitle").value.trim() || game;
+  const fileInput = document.getElementById("adminFileInput");
+  const urlInput = document.getElementById("adminUrl");
+  const uploadStatus = document.getElementById("uploadStatus");
+  const uploadStatusText = document.getElementById("uploadStatusText");
+  const submitBtn = document.getElementById("adminSubmitBtn");
 
-  if (!title || !game || !imageUrl) return;
+  if (!game) return;
+
+  let finalImageUrl = urlInput ? urlInput.value.trim() : "";
+
+  // Si el usuario seleccionó un archivo local de imagen desde su dispositivo
+  if (fileInput && fileInput.files && fileInput.files[0]) {
+    const file = fileInput.files[0];
+
+    // Si Cloudinary está configurado, subir directamente a la nube
+    if (CLOUDINARY_CLOUD_NAME && CLOUDINARY_UPLOAD_PRESET) {
+      try {
+        if (uploadStatus) {
+          uploadStatus.classList.remove("hidden");
+          uploadStatus.classList.add("flex");
+          if (uploadStatusText) uploadStatusText.textContent = "Optimizando y subiendo foto a Cloudinary...";
+        }
+        if (submitBtn) submitBtn.disabled = true;
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+          method: "POST",
+          body: formData
+        });
+
+        if (!res.ok) throw new Error("Error en servidor Cloudinary");
+        const data = await res.json();
+        finalImageUrl = data.secure_url;
+      } catch (err) {
+        console.warn("Cloudinary error, aplicando fallback a DataURL local", err);
+        finalImageUrl = await readFileAsDataURL(file);
+      } finally {
+        if (uploadStatus) uploadStatus.classList.add("hidden");
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    } else {
+      // Si aún no se configuraron claves de Cloudinary, genera vista previa inmediata del archivo local
+      finalImageUrl = await readFileAsDataURL(file);
+    }
+  }
+
+  if (!finalImageUrl) {
+    alert("Por favor, selecciona un archivo de imagen desde tu dispositivo o pega una URL válida.");
+    return;
+  }
 
   const newCapture = {
     id: Date.now(),
     title: title,
     game: game,
-    imageUrl: imageUrl,
+    imageUrl: finalImageUrl,
     date: "Hoy"
   };
 
   captures.unshift(newCapture);
 
+  // Guardar en el almacenamiento local para persistencia
+  try {
+    localStorage.setItem("user_custom_captures", JSON.stringify(captures));
+  } catch (e) {}
+
   currentFolder = game;
   renderApp();
   closeAdminModal();
+}
+
+// Convertir archivo de imagen local a DataURL
+function readFileAsDataURL(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target.result);
+    reader.readAsDataURL(file);
+  });
 }
