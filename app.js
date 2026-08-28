@@ -337,11 +337,6 @@ function renderFoldersView() {
         
         <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/30 to-transparent opacity-90 group-hover:opacity-75 transition-opacity"></div>
 
-        <div class="absolute top-3.5 left-3.5 px-2.5 py-1 rounded bg-zinc-950/80 border border-zinc-800/90 text-[11px] font-mono text-zinc-300 backdrop-blur-md flex items-center gap-1.5 shadow-sm">
-          <i class="fa-solid fa-folder-closed text-zinc-400"></i>
-          <span>Álbum</span>
-        </div>
-
         <div class="absolute bottom-0 inset-x-0 p-5 flex items-end justify-between">
           <div>
             <h3 class="text-base font-semibold text-white tracking-wide group-hover:translate-x-1 transition-transform">
