@@ -69,6 +69,19 @@ async function initApp() {
     });
   }
 
+  // Delegación de clics en la rejilla principal de álbumes
+  if (mainGrid) {
+    mainGrid.addEventListener("click", (e) => {
+      if (e.target.closest("button")) return;
+      const card = e.target.closest("article[data-game]");
+      if (!card) return;
+      const gameName = card.getAttribute("data-game");
+      if (gameName) {
+        openFolder(gameName);
+      }
+    });
+  }
+
   // Atajo de teclado: Esc para cerrar, Flecha Izquierda / Derecha para navegar capturas
   document.addEventListener("keydown", (e) => {
     if (viewerModal && !viewerModal.classList.contains("hidden")) {
@@ -329,15 +342,16 @@ function renderFoldersView() {
     }
     const coverPhoto = coverPhotoItem ? coverPhotoItem.imageUrl : "";
     const count = photos.length;
+    const escapedGame = escapeHtml(gameName);
 
     return `
       <article 
-        onclick="openFolder('${gameName.replace(/'/g, "\\'")}')"
+        data-game="${escapedGame}"
         class="relative overflow-hidden rounded-lg aspect-[16/10] bg-black group cursor-pointer border border-zinc-800/80 hover:border-zinc-600 transition-all duration-300 shadow-md"
       >
         <img 
           src="${coverPhoto}" 
-          alt="${gameName}" 
+          alt="${escapedGame}" 
           class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-75 group-hover:opacity-90"
           loading="lazy"
         >
@@ -347,7 +361,7 @@ function renderFoldersView() {
         <div class="absolute bottom-0 inset-x-0 p-5 flex items-end justify-between">
           <div>
             <h3 class="text-base font-semibold text-white tracking-wide group-hover:translate-x-1 transition-transform">
-              ${gameName}
+              ${escapedGame}
             </h3>
             <p class="text-xs text-zinc-400 font-mono mt-0.5">${count} ${count === 1 ? 'captura' : 'capturas'}</p>
           </div>
