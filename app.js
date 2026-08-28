@@ -682,6 +682,44 @@ function togglePhotoSpoilerFromViewer() {
   const stateText = targetCapture.isSpoiler ? "marcada como Spoiler" : "desmarcada de Spoiler";
   showToast(`Foto ${stateText}`, "fa-solid fa-eye-slash text-red-400");
   updateViewerAdminButtons();
+  updateViewerSpoilerState(targetCapture);
+  renderApp();
+}
+
+// Actualizar desenfoque y capa de advertencia de Spoiler en el visor ampliado
+function updateViewerSpoilerState(item) {
+  const viewerImage = document.getElementById("viewerImage");
+  const overlay = document.getElementById("viewerSpoilerOverlay");
+  if (!item || !viewerImage) return;
+
+  const areAlbumSpoilersRevealed = currentFolder && revealedSpoilersPerFolder[currentFolder] === true;
+  const isSingleRevealed = individuallyRevealedPhotos[item.id] === true;
+
+  const isPhotoBlurred = item.isSpoiler && !areAlbumSpoilersRevealed && !isSingleRevealed;
+
+  if (isPhotoBlurred) {
+    viewerImage.classList.add("blur-2xl", "scale-105", "opacity-40");
+    if (overlay) {
+      overlay.classList.remove("hidden");
+      overlay.classList.add("flex");
+    }
+  } else {
+    viewerImage.classList.remove("blur-2xl", "scale-105", "opacity-40");
+    viewerImage.classList.add("opacity-100");
+    if (overlay) {
+      overlay.classList.add("hidden");
+      overlay.classList.remove("flex");
+    }
+  }
+}
+
+// Revelar spoiler desde el botón central del visor ampliado
+function revealCurrentViewerSpoiler(event) {
+  if (event) event.stopPropagation();
+  if (activeCaptureId === null) return;
+  individuallyRevealedPhotos[activeCaptureId] = true;
+  const item = captures.find(c => c.id === activeCaptureId);
+  if (item) updateViewerSpoilerState(item);
   renderApp();
 }
 
@@ -692,6 +730,7 @@ function openViewerModal(id) {
 
   activeCaptureId = id;
   updateViewerAdminButtons();
+  updateViewerSpoilerState(item);
 
   if (viewerImage) {
     viewerImage.src = item.imageUrl;
@@ -803,6 +842,7 @@ function navigateViewer(direction) {
   const nextCapture = currentPhotos[newIndex];
   activeCaptureId = nextCapture.id;
   updateViewerAdminButtons();
+  updateViewerSpoilerState(nextCapture);
 
   if (viewerImage) {
     viewerImage.classList.add("opacity-40");
