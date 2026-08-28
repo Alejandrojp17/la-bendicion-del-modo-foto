@@ -107,6 +107,19 @@ async function initApp() {
 
 
 
+const DEFAULT_INITIAL_CAPTURES = [
+  { id: 1, game: "ASTRO BOT", imageUrl: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=1400&auto=format&fit=crop", date: "2026" },
+  { id: 2, game: "Cyberpunk 2077", imageUrl: "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=1400&auto=format&fit=crop", date: "2026" },
+  { id: 3, game: "DayZ", imageUrl: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=1400&auto=format&fit=crop", date: "2026" },
+  { id: 4, game: "God of War Ragnarök", imageUrl: "https://images.unsplash.com/photo-1511447333015-45b65e60f6d5?q=80&w=1400&auto=format&fit=crop", date: "2026" },
+  { id: 5, game: "Laika: Aged Through Blood", imageUrl: "https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=1400&auto=format&fit=crop", date: "2026" },
+  { id: 6, game: "Marvel's Spider-Man 2", imageUrl: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?q=80&w=1400&auto=format&fit=crop", date: "2026" },
+  { id: 7, game: "Modern Warfare 3", imageUrl: "https://images.unsplash.com/photo-1542751110-97427bbecf20?q=80&w=1400&auto=format&fit=crop", date: "2026" },
+  { id: 8, game: "Red Dead Redemption", imageUrl: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=1400&auto=format&fit=crop", date: "2026" },
+  { id: 9, game: "Sea of Thieves", imageUrl: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1400&auto=format&fit=crop", date: "2026" },
+  { id: 10, game: "Uncharted: Colección Legado de los Ladrones", imageUrl: "https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=1400&auto=format&fit=crop", date: "2026" }
+];
+
 // Obtener lista de IDs de capturas eliminadas por el administrador
 function getDeletedCaptureIds() {
   try {
@@ -142,14 +155,7 @@ async function loadSavedCaptures() {
     console.warn("Nota: usando fallback por defecto", e);
   }
 
-  if (baseCaptures.length === 0) {
-    baseCaptures = [...DEFAULT_INITIAL_CAPTURES];
-  }
-
   const deletedIds = new Set(getDeletedCaptureIds());
-
-  // Filtrar fotos eliminadas por el administrador
-  baseCaptures = baseCaptures.filter(c => !deletedIds.has(c.id));
 
   try {
     const saved = localStorage.getItem("user_custom_captures");
@@ -159,13 +165,17 @@ async function loadSavedCaptures() {
         const valid = parsed.filter(c => c && c.game && c.imageUrl && !deletedIds.has(c.id));
         const existingIds = new Set(baseCaptures.map(c => c.id));
         const newLocalItems = valid.filter(c => !existingIds.has(c.id));
-        captures = [...newLocalItems, ...baseCaptures];
-        return;
+        captures = [...newLocalItems, ...baseCaptures].filter(c => !deletedIds.has(c.id));
+        if (captures.length > 0) return;
       }
     }
   } catch (e) {}
 
-  captures = baseCaptures;
+  if (baseCaptures.length === 0) {
+    baseCaptures = [...DEFAULT_INITIAL_CAPTURES];
+  }
+
+  captures = baseCaptures.filter(c => !deletedIds.has(c.id));
 }
 
 // Restaurar la galería a los juegos originales por defecto
