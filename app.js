@@ -306,8 +306,98 @@ function openFolder(gameName, updateHistory = true) {
   renderApp();
 }
 
+// Estado y gestión del orden personalizado de álbumes
+let customAlbumOrder = [];
+
+function loadCustomAlbumOrder() {
+  try {
+    const saved = localStorage.getItem("custom_album_order");
+    if (saved) {
+      customAlbumOrder = JSON.parse(saved);
+    }
+  } catch (e) {}
+}
+
+function saveCustomAlbumOrder() {
+  try {
+    localStorage.setItem("custom_album_order", JSON.stringify(customAlbumOrder));
+  } catch (e) {}
+}
+
+let draggedAlbumName = null;
+
+function handleAlbumDragStart(e, gameName) {
+  draggedAlbumName = gameName;
+  e.dataTransfer.setData("text/plain", gameName);
+  e.currentTarget.classList.add("opacity-50", "scale-95");
+}
+
+function handleAlbumDragEnd(e) {
+  e.currentTarget.classList.remove("opacity-50", "scale-95");
+}
+
+function handleAlbumDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "move";
+}
+
+function handleAlbumDrop(e, targetGameName) {
+  e.preventDefault();
+  if (!draggedAlbumName || draggedAlbumName === targetGameName) return;
+
+  const foldersMap = {};
+  captures.forEach(item => { foldersMap[item.game] = true; });
+  const currentGames = Object.keys(foldersMap);
+
+  let order = customAlbumOrder.length > 0 ? [...customAlbumOrder] : [...currentGames];
+  currentGames.forEach(g => {
+    if (!order.includes(g)) order.push(g);
+  });
+
+  const fromIdx = order.indexOf(draggedAlbumName);
+  const toIdx = order.indexOf(targetGameName);
+
+  if (fromIdx !== -1 && toIdx !== -1) {
+    order.splice(fromIdx, 1);
+    order.splice(toIdx, 0, draggedAlbumName);
+    customAlbumOrder = order;
+    saveCustomAlbumOrder();
+    showToast(`Álbum "${draggedAlbumName}" reordenado`, "fa-solid fa-arrows-up-down-left-right text-amber-400");
+    renderApp();
+  }
+  draggedAlbumName = null;
+}
+
+function moveAlbumPosition(e, gameName, direction) {
+  e.stopPropagation();
+  const foldersMap = {};
+  captures.forEach(item => { foldersMap[item.game] = true; });
+  const currentGames = Object.keys(foldersMap);
+
+  let order = customAlbumOrder.length > 0 ? [...customAlbumOrder] : [...currentGames];
+  currentGames.forEach(g => {
+    if (!order.includes(g)) order.push(g);
+  });
+
+  const fromIdx = order.indexOf(gameName);
+  if (fromIdx === -1) return;
+
+  const toIdx = fromIdx + direction;
+  if (toIdx < 0 || toIdx >= order.length) return;
+
+  order.splice(fromIdx, 1);
+  order.splice(toIdx, 0, gameName);
+
+  customAlbumOrder = order;
+  saveCustomAlbumOrder();
+  showToast(`Álbum "${gameName}" reordenado`, "fa-solid fa-arrow-left-long text-amber-400");
+  renderApp();
+}
+
 // 1. RENDERIZAR VISTA DE CARPETAS DE VIDEOJUEGOS
 function renderFoldersView() {
+  loadCustomAlbumOrder();
+
   const foldersMap = {};
   captures.forEach(item => {
     if (!foldersMap[item.game]) {
@@ -317,12 +407,26 @@ function renderFoldersView() {
   });
 
   const games = Object.keys(foldersMap);
+  const isAdmin = localStorage.getItem("admin_session") === "true";
+
+  // Ordenar álbumes según la ordenación personalizada del administrador
+  if (customAlbumOrder.length > 0) {
+    games.sort((a, b) => {
+      const idxA = customAlbumOrder.indexOf(a);
+      const idxB = customAlbumOrder.indexOf(b);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.localeCompare(b);
+    });
+  }
 
   navigationHeader.innerHTML = `
     <div>
       <span class="text-xs font-semibold text-zinc-300 tracking-wider uppercase flex items-center gap-2">
         <i class="fa-regular fa-folder text-zinc-400"></i> Carpetas de Videojuegos
       </span>
+      ${isAdmin ? '<p class="text-[11px] text-amber-400/90 font-mono mt-0.5 flex items-center gap-1.5"><i class="fa-solid fa-up-down-left-right text-[10px]"></i>Modo Edición: Arrastra las carpetas o usa ◄ ► para reordenarlas</p>' : ''}
     </div>
     <span class="text-xs font-mono text-zinc-500">${games.length} ${games.length === 1 ? 'carpeta' : 'carpetas'}</span>
   `;
@@ -341,22 +445,44 @@ function renderFoldersView() {
     const photos = foldersMap[gameName];
     const coverPhoto = photos[0].imageUrl;
     const count = photos.length;
+    const escapedName = gameName.replace(/'/g, "\\'");
 
     return `
       <article 
-        onclick="openFolder('${gameName.replace(/'/g, "\\'")}')"
+        onclick="openFolder('${escapedName}')"
+        ${isAdmin ? `
+          draggable="true" 
+          ondragstart="handleAlbumDragStart(event, '${escapedName}')"
+          ondragend="handleAlbumDragEnd(event)"
+          ondragover="handleAlbumDragOver(event)"
+          ondrop="handleAlbumDrop(event, '${escapedName}')"
+        ` : ''}
         class="relative overflow-hidden rounded-lg aspect-[16/10] bg-black group cursor-pointer border border-zinc-800/80 hover:border-zinc-600 transition-all duration-300 shadow-md"
       >
         <img 
           src="${coverPhoto}" 
           alt="${gameName}" 
-          class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-75 group-hover:opacity-90"
+          class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-75 group-hover:opacity-90 pointer-events-none"
           loading="lazy"
         >
         
-        <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/30 to-transparent opacity-90 group-hover:opacity-75 transition-opacity"></div>
+        <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/30 to-transparent opacity-90 group-hover:opacity-75 transition-opacity pointer-events-none"></div>
 
-        <div class="absolute bottom-0 inset-x-0 p-5 flex items-end justify-between">
+        ${isAdmin ? `
+          <div class="absolute top-3 right-3 z-20 flex items-center gap-1 bg-zinc-950/90 border border-zinc-700/90 rounded-full px-2 py-1 shadow-lg backdrop-blur-md" onclick="event.stopPropagation()">
+            <button onclick="moveAlbumPosition(event, '${escapedName}', -1)" class="w-6 h-6 rounded-full hover:bg-zinc-800 flex items-center justify-center text-zinc-300 hover:text-white transition-colors cursor-pointer" title="Mover a la izquierda">
+              <i class="fa-solid fa-chevron-left text-[10px]"></i>
+            </button>
+            <span class="text-[10px] text-zinc-400 font-mono px-1 flex items-center gap-1 cursor-grab" title="Arrastrar para reordenar álbum">
+              <i class="fa-solid fa-grip-vertical text-zinc-400"></i>
+            </span>
+            <button onclick="moveAlbumPosition(event, '${escapedName}', 1)" class="w-6 h-6 rounded-full hover:bg-zinc-800 flex items-center justify-center text-zinc-300 hover:text-white transition-colors cursor-pointer" title="Mover a la derecha">
+              <i class="fa-solid fa-chevron-right text-[10px]"></i>
+            </button>
+          </div>
+        ` : ''}
+
+        <div class="absolute bottom-0 inset-x-0 p-5 flex items-end justify-between pointer-events-none">
           <div>
             <h3 class="text-base font-semibold text-white tracking-wide group-hover:translate-x-1 transition-transform">
               ${gameName}
