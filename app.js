@@ -390,9 +390,23 @@ function togglePhotoSpoiler(event, id) {
   renderApp();
 }
 
+// Obtener clave de ordenación cronológica por nombre de archivo original (ej. 20240418011914_1.jpg)
+function getPhotoSortKey(photo) {
+  if (photo.filename) return photo.filename;
+  if (photo.imageUrl) {
+    const filename = photo.imageUrl.split('/').pop();
+    return filename;
+  }
+  return String(photo.id);
+}
+
 // 2. RENDERIZAR FOTOS DENTRO DE LA CARPETA SELECCIONADA
 function renderPhotosInFolderView() {
-  const photos = captures.filter(item => item.game === currentFolder);
+  // Ordenar fotos cronológicamente por nombre de archivo original
+  const photos = captures
+    .filter(item => item.game === currentFolder)
+    .sort((a, b) => getPhotoSortKey(a).localeCompare(getPhotoSortKey(b), undefined, { numeric: true, sensitivity: 'base' }));
+
   const isAdmin = localStorage.getItem("admin_session") === "true";
   const currentCoverId = photos.length > 0 ? photos[0].id : null;
   
@@ -817,9 +831,9 @@ function showViewerCycleNotice(message) {
 function navigateViewer(direction) {
   if (activeCaptureId === null) return;
 
-  const currentPhotos = currentFolder !== null 
+  const currentPhotos = (currentFolder !== null 
     ? captures.filter(c => c.game === currentFolder)
-    : captures;
+    : captures).sort((a, b) => getPhotoSortKey(a).localeCompare(getPhotoSortKey(b), undefined, { numeric: true, sensitivity: 'base' }));
 
   if (currentPhotos.length <= 1) return;
 
