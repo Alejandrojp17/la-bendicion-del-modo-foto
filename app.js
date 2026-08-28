@@ -762,7 +762,7 @@ function confirmDeleteCapture(event, id) {
 
     showToast(`Foto eliminada de "${gameName}"`, "fa-solid fa-trash-can text-red-400");
     renderApp();
-    syncCapturesToGitHubAPI();
+    queueGitHubSync();
   }
 }
 
@@ -1118,6 +1118,19 @@ function populateGithubTokenInput() {
   }
 }
 
+// Temporizador y cola inteligente para agrupar eliminaciones seguidas
+let githubSyncTimer = null;
+
+function queueGitHubSync() {
+  const token = localStorage.getItem("github_pat");
+  if (!token) return;
+
+  clearTimeout(githubSyncTimer);
+  githubSyncTimer = setTimeout(() => {
+    syncCapturesToGitHubAPI();
+  }, 2000);
+}
+
 // Sincronizar automáticamente la base de datos captures.json directamente con GitHub API
 async function syncCapturesToGitHubAPI() {
   const token = localStorage.getItem("github_pat");
@@ -1162,7 +1175,7 @@ async function syncCapturesToGitHubAPI() {
     });
 
     if (!putRes.ok) throw new Error("Error enviando actualización a GitHub");
-    showToast("¡Sincronizado en vivo con GitHub!", "fa-solid fa-cloud-check text-emerald-400");
+    showToast("¡Cambios sincronizados en vivo con GitHub!", "fa-solid fa-cloud-check text-emerald-400");
     return true;
   } catch (err) {
     console.warn("Error en sincronización automática con GitHub API:", err);
