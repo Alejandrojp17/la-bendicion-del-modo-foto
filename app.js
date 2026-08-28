@@ -107,22 +107,47 @@ async function initApp() {
 
 
 
-// Cargar capturas desde la base de datos oficial captures.json de forma prioritaria
+// Obtener lista de IDs de capturas eliminadas por el administrador
+function getDeletedCaptureIds() {
+  try {
+    const saved = localStorage.getItem("user_deleted_capture_ids");
+    if (saved) return JSON.parse(saved) || [];
+  } catch (e) {}
+  return [];
+}
+
+function saveDeletedCaptureId(id) {
+  try {
+    const deleted = getDeletedCaptureIds();
+    if (!deleted.includes(id)) {
+      deleted.push(id);
+      localStorage.setItem("user_deleted_capture_ids", JSON.stringify(deleted));
+    }
+  } catch (e) {}
+}
+
+// Cargar capturas filtrando las eliminadas de forma prioritaria
 async function loadSavedCaptures() {
+  let baseCaptures = [];
+
   try {
     const res = await fetch("./captures.json?v=" + Date.now());
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
-        captures = data;
-        return;
+        baseCaptures = data;
       }
     }
   } catch (e) {
     console.warn("Nota: usando fallback por defecto", e);
   }
 
-  captures = [...DEFAULT_INITIAL_CAPTURES];
+  if (baseCaptures.length === 0) {
+    baseCaptures = [...DEFAULT_INITIAL_CAPTURES];
+  }
+
+  const deletedIds = new Set(getDeletedCaptureIds());
+  captures = baseCaptures.filter(c => !deletedIds.has(c.id));
 }
 
 // Restaurar la galería a los juegos originales por defecto
@@ -581,6 +606,7 @@ function confirmDeleteCapture(event, id) {
 
   if (confirm(`¿Estás seguro de que deseas eliminar esta captura de "${gameName}"?`)) {
     captures = captures.filter(c => c.id !== id);
+    saveDeletedCaptureId(id);
 
     try {
       localStorage.setItem("user_custom_captures", JSON.stringify(captures));
