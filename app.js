@@ -476,44 +476,44 @@ function renderFoldersView() {
     }
     const coverPhoto = coverPhotoItem.imageUrl;
     const count = photos.length;
-    const escapedName = gameName.replace(/'/g, "\\'");
+    const encodedGame = encodeURIComponent(gameName);
 
     return `
       <article 
-        onclick="openFolder('${escapedName}')"
+        onclick="openFolder(decodeURIComponent('${encodedGame}'))"
         ${isAdmin ? `
           draggable="true" 
-          ondragstart="handleAlbumDragStart(event, '${escapedName}')"
+          ondragstart="handleAlbumDragStart(event, decodeURIComponent('${encodedGame}'))"
           ondragend="handleAlbumDragEnd(event)"
           ondragover="handleAlbumDragOver(event)"
-          ondrop="handleAlbumDrop(event, '${escapedName}')"
+          ondrop="handleAlbumDrop(event, decodeURIComponent('${encodedGame}'))"
         ` : ''}
         class="relative overflow-hidden rounded-lg aspect-[16/10] bg-black group cursor-pointer border border-zinc-800/80 hover:border-zinc-600 transition-all duration-300 shadow-md"
       >
         <img 
           src="${coverPhoto}" 
-          alt="${gameName}" 
-          class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-75 group-hover:opacity-90 pointer-events-none"
+          alt="${escapeHtml(gameName)}" 
+          class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-75 group-hover:opacity-90"
           loading="lazy"
         >
         
-        <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/30 to-transparent opacity-90 group-hover:opacity-75 transition-opacity pointer-events-none"></div>
+        <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/30 to-transparent opacity-90 group-hover:opacity-75 transition-opacity"></div>
 
         ${isAdmin ? `
           <div class="absolute top-3 right-3 z-20 flex items-center gap-1 bg-zinc-950/90 border border-zinc-700/90 rounded-full px-2 py-1 shadow-lg backdrop-blur-md" onclick="event.stopPropagation()">
-            <button onclick="moveAlbumPosition(event, '${escapedName}', -1)" class="w-6 h-6 rounded-full hover:bg-zinc-800 flex items-center justify-center text-zinc-300 hover:text-white transition-colors cursor-pointer" title="Mover a la izquierda">
+            <button onclick="moveAlbumPosition(event, decodeURIComponent('${encodedGame}'), -1)" class="w-6 h-6 rounded-full hover:bg-zinc-800 flex items-center justify-center text-zinc-300 hover:text-white transition-colors cursor-pointer" title="Mover a la izquierda">
               <i class="fa-solid fa-chevron-left text-[10px]"></i>
             </button>
             <span class="text-[10px] text-zinc-400 font-mono px-1 flex items-center gap-1 cursor-grab" title="Arrastrar para reordenar álbum">
               <i class="fa-solid fa-grip-vertical text-zinc-400"></i>
             </span>
-            <button onclick="moveAlbumPosition(event, '${escapedName}', 1)" class="w-6 h-6 rounded-full hover:bg-zinc-800 flex items-center justify-center text-zinc-300 hover:text-white transition-colors cursor-pointer" title="Mover a la derecha">
+            <button onclick="moveAlbumPosition(event, decodeURIComponent('${encodedGame}'), 1)" class="w-6 h-6 rounded-full hover:bg-zinc-800 flex items-center justify-center text-zinc-300 hover:text-white transition-colors cursor-pointer" title="Mover a la derecha">
               <i class="fa-solid fa-chevron-right text-[10px]"></i>
             </button>
           </div>
         ` : ''}
 
-        <div class="absolute bottom-0 inset-x-0 p-5 flex items-end justify-between pointer-events-none">
+        <div class="absolute bottom-0 inset-x-0 p-5 flex items-end justify-between">
           <div>
             <h3 class="text-base font-semibold text-white tracking-wide group-hover:translate-x-1 transition-transform">
               ${gameName}
