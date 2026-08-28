@@ -465,9 +465,16 @@ function renderFoldersView() {
   emptyState.classList.add("hidden");
   emptyState.classList.remove("flex");
 
+  loadFolderCovers();
+
   mainGrid.innerHTML = games.map(gameName => {
     const photos = foldersMap[gameName];
-    const coverPhoto = photos[0].imageUrl;
+    let coverPhotoItem = photos[0];
+    if (folderCovers[gameName]) {
+      const chosen = photos.find(p => p.id === folderCovers[gameName]);
+      if (chosen) coverPhotoItem = chosen;
+    }
+    const coverPhoto = coverPhotoItem.imageUrl;
     const count = photos.length;
     const escapedName = gameName.replace(/'/g, "\\'");
 
@@ -576,8 +583,12 @@ function renderPhotosInFolderView() {
     .filter(item => item.game === currentFolder)
     .sort((a, b) => getPhotoSortKey(a).localeCompare(getPhotoSortKey(b), undefined, { numeric: true, sensitivity: 'base' }));
 
-  const isAdmin = localStorage.getItem("admin_session") === "true";
-  const currentCoverId = photos.length > 0 ? photos[0].id : null;
+  loadFolderCovers();
+  let currentCoverId = folderCovers[currentFolder];
+  if (!currentCoverId && photos.length > 0) {
+    const rawPhoto = captures.find(c => c.game === currentFolder);
+    if (rawPhoto) currentCoverId = rawPhoto.id;
+  }
   
   const hasSpoilers = photos.some(p => p.isSpoiler);
   const areAlbumSpoilersRevealed = revealedSpoilersPerFolder[currentFolder] === true;
@@ -766,35 +777,48 @@ function confirmDeleteCapture(event, id) {
   }
 }
 
+// Estado y gestión de portadas personalizadas por álbum
+let folderCovers = {};
+
+function loadFolderCovers() {
+  try {
+    const saved = localStorage.getItem("custom_folder_covers");
+    if (saved) folderCovers = JSON.parse(saved) || {};
+  } catch (e) {}
+}
+
+function saveFolderCovers() {
+  try {
+    localStorage.setItem("custom_folder_covers", JSON.stringify(folderCovers));
+  } catch (e) {}
+}
+
 // Establecer una foto como portada del álbum (Modo Admin)
 function setAsFolderCover(event, id) {
-  event.stopPropagation(); // Evitar abrir el visor al hacer clic en el botón de portada
+  event.stopPropagation();
 
-  const targetIndex = captures.findIndex(c => c.id === id);
-  if (targetIndex === -1) return;
+  const targetCapture = captures.find(c => c.id === id);
+  if (!targetCapture) return;
 
-  const targetCapture = captures[targetIndex];
   const gameName = targetCapture.game;
+  loadFolderCovers();
+  folderCovers[gameName] = id;
+  saveFolderCovers();
 
-  // Extraer el elemento de su posición actual
-  captures.splice(targetIndex, 1);
-
-  // Encontrar el primer elemento que pertenezca al mismo juego e insertarlo antes
-  const firstIndexForGame = captures.findIndex(c => c.game === gameName);
-
-  if (firstIndexForGame !== -1) {
-    captures.splice(firstIndexForGame, 0, targetCapture);
-  } else {
+  // Mover también la portada al inicio en la estructura base
+  const idx = captures.findIndex(c => c.id === id);
+  if (idx !== -1) {
+    captures.splice(idx, 1);
     captures.unshift(targetCapture);
   }
 
-  // Guardar cambio en localStorage
   try {
     localStorage.setItem("user_custom_captures", JSON.stringify(captures));
   } catch (e) {}
 
-  showToast(`¡Portada de "${gameName}" actualizada!`);
+  showToast(`¡Portada de "${gameName}" actualizada!`, "fa-solid fa-star text-amber-400");
   renderApp();
+  queueGitHubSync();
 }
 
 // Mostrar notificación Toast discreta
