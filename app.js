@@ -318,9 +318,16 @@ function renderFoldersView() {
   emptyState.classList.add("hidden");
   emptyState.classList.remove("flex");
 
+  loadFolderCovers();
+
   mainGrid.innerHTML = games.map(gameName => {
     const photos = foldersMap[gameName];
-    const coverPhoto = photos[0].imageUrl;
+    let coverPhotoItem = photos[0];
+    if (folderCovers[gameName]) {
+      const chosen = photos.find(p => p.id === folderCovers[gameName]);
+      if (chosen) coverPhotoItem = chosen;
+    }
+    const coverPhoto = coverPhotoItem ? coverPhotoItem.imageUrl : "";
     const count = photos.length;
 
     return `
@@ -407,7 +414,9 @@ function renderPhotosInFolderView() {
     .filter(item => item.game === currentFolder)
     .sort((a, b) => getPhotoSortKey(a).localeCompare(getPhotoSortKey(b), undefined, { numeric: true, sensitivity: 'base' }));
 
-  const isAdmin = localStorage.getItem("admin_session") === "true";
+  loadFolderCovers();
+  const currentCoverId = folderCovers[currentFolder] || (photos.length > 0 ? photos[0].id : null);
+  
   const hasSpoilers = photos.some(p => p.isSpoiler);
   const areAlbumSpoilersRevealed = revealedSpoilersPerFolder[currentFolder] === true;
 
@@ -477,6 +486,18 @@ function renderPhotosInFolderView() {
 
     let adminButtonHTML = "";
     if (isAdmin) {
+      const isCover = item.id === currentCoverId;
+      const coverBtn = `
+        <button 
+          onclick="setAsFolderCover(event, ${item.id})"
+          title="${isCover ? 'Portada actual del álbum' : 'Fijar como portada del álbum'}"
+          class="${isCover ? 'bg-amber-500/20 border border-amber-500/80 text-amber-300' : 'opacity-0 group-hover:opacity-100 bg-zinc-950/90 border border-zinc-700 hover:border-amber-400 text-zinc-400 hover:text-amber-300'} px-2 py-0.5 rounded text-[10px] font-mono flex items-center gap-1 shadow-lg backdrop-blur-md transition-all cursor-pointer"
+        >
+          <i class="fa-${isCover ? 'solid' : 'regular'} fa-star text-amber-400 text-[9px]"></i>
+          <span>${isCover ? 'Portada' : 'Fijar Portada'}</span>
+        </button>
+      `;
+
       const spoilerBtn = item.isSpoiler ? `
         <button 
           onclick="togglePhotoSpoiler(event, ${item.id})"
@@ -507,6 +528,7 @@ function renderPhotosInFolderView() {
 
       adminButtonHTML = `
         <div class="absolute top-2 right-2 z-30 flex items-center gap-1.5">
+          ${coverBtn}
           ${spoilerBtn}
           ${deleteBtn}
         </div>
@@ -549,6 +571,38 @@ function renderPhotosInFolderView() {
   }).join("");
 
   mainGrid.innerHTML = spoilerBannerHTML + cardsHTML;
+}
+
+// Estado y gestión de portadas personalizadas por álbum
+let folderCovers = {};
+
+function loadFolderCovers() {
+  try {
+    const saved = localStorage.getItem("custom_folder_covers");
+    if (saved) folderCovers = JSON.parse(saved) || {};
+  } catch (e) {}
+}
+
+function saveFolderCovers() {
+  try {
+    localStorage.setItem("custom_folder_covers", JSON.stringify(folderCovers));
+  } catch (e) {}
+}
+
+// Establecer una foto como portada del álbum (Modo Admin)
+function setAsFolderCover(event, id) {
+  if (event) event.stopPropagation();
+
+  const targetCapture = captures.find(c => c.id === id);
+  if (!targetCapture) return;
+
+  const gameName = targetCapture.game;
+  loadFolderCovers();
+  folderCovers[gameName] = id;
+  saveFolderCovers();
+
+  showToast(`¡Portada de "${gameName}" actualizada!`, "fa-solid fa-star text-amber-400");
+  renderApp();
 }
 
 // Eliminar una captura con confirmación (Modo Admin)
