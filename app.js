@@ -107,6 +107,25 @@ async function initApp() {
 
 
 
+// Obtener lista de IDs de capturas eliminadas por el administrador
+function getDeletedCaptureIds() {
+  try {
+    const saved = localStorage.getItem("user_deleted_capture_ids");
+    if (saved) return JSON.parse(saved) || [];
+  } catch (e) {}
+  return [];
+}
+
+function saveDeletedCaptureId(id) {
+  try {
+    const deleted = getDeletedCaptureIds();
+    if (!deleted.includes(id)) {
+      deleted.push(id);
+      localStorage.setItem("user_deleted_capture_ids", JSON.stringify(deleted));
+    }
+  } catch (e) {}
+}
+
 // Cargar capturas unificando captures.json oficial con las nuevas subidas locales del administrador
 async function loadSavedCaptures() {
   let baseCaptures = [];
@@ -127,12 +146,17 @@ async function loadSavedCaptures() {
     baseCaptures = [...DEFAULT_INITIAL_CAPTURES];
   }
 
+  const deletedIds = new Set(getDeletedCaptureIds());
+
+  // Filtrar fotos eliminadas por el administrador
+  baseCaptures = baseCaptures.filter(c => !deletedIds.has(c.id));
+
   try {
     const saved = localStorage.getItem("user_custom_captures");
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        const valid = parsed.filter(c => c && c.game && c.imageUrl);
+        const valid = parsed.filter(c => c && c.game && c.imageUrl && !deletedIds.has(c.id));
         const existingIds = new Set(baseCaptures.map(c => c.id));
         const newLocalItems = valid.filter(c => !existingIds.has(c.id));
         captures = [...newLocalItems, ...baseCaptures];
@@ -726,6 +750,7 @@ function confirmDeleteCapture(event, id) {
 
   if (confirm(`¿Estás seguro de que deseas eliminar esta captura de "${gameName}"?`)) {
     captures = captures.filter(c => c.id !== id);
+    saveDeletedCaptureId(id);
 
     try {
       localStorage.setItem("user_custom_captures", JSON.stringify(captures));
