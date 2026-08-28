@@ -762,6 +762,7 @@ function confirmDeleteCapture(event, id) {
 
     showToast(`Foto eliminada de "${gameName}"`, "fa-solid fa-trash-can text-red-400");
     renderApp();
+    syncCapturesToGitHubAPI();
   }
 }
 
@@ -1095,9 +1096,84 @@ function toggleNewGameInput() {
   }
 }
 
+// Guardar Token de GitHub API
+function saveGithubToken() {
+  const input = document.getElementById("adminGithubTokenInput");
+  if (!input) return;
+  const token = input.value.trim();
+  if (token) {
+    localStorage.setItem("github_pat", token);
+    showToast("Token de GitHub guardado correctamente", "fa-solid fa-key text-amber-400");
+  } else {
+    localStorage.removeItem("github_pat");
+    showToast("Token de GitHub eliminado", "fa-solid fa-circle-info text-zinc-400");
+  }
+}
+
+// Cargar Token de GitHub al abrir el modal de Admin
+function populateGithubTokenInput() {
+  const input = document.getElementById("adminGithubTokenInput");
+  if (input) {
+    input.value = localStorage.getItem("github_pat") || "";
+  }
+}
+
+// Sincronizar automáticamente la base de datos captures.json directamente con GitHub API
+async function syncCapturesToGitHubAPI() {
+  const token = localStorage.getItem("github_pat");
+  if (!token) return false;
+
+  try {
+    const repoOwner = "Alejandrojp17";
+    const repoName = "la-bendicion-del-modo-foto";
+    const filePath = "captures.json";
+    const apiUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
+
+    const getRes = await fetch(apiUrl, {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Accept": "application/vnd.github.v3+json"
+      }
+    });
+
+    if (!getRes.ok) throw new Error("Error leyendo SHA de GitHub API");
+    const getData = await getRes.json();
+    const currentSha = getData.sha;
+
+    const jsonString = JSON.stringify(captures, null, 2);
+    const encoder = new TextEncoder();
+    const dataUint8 = encoder.encode(jsonString);
+    let binaryString = "";
+    dataUint8.forEach(b => { binaryString += String.fromCharCode(b); });
+    const contentBase64 = btoa(binaryString);
+
+    const putRes = await fetch(apiUrl, {
+      method: "PUT",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Accept": "application/vnd.github.v3+json",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        message: "auto: sincronización en vivo desde panel de administración",
+        content: contentBase64,
+        sha: currentSha
+      })
+    });
+
+    if (!putRes.ok) throw new Error("Error enviando actualización a GitHub");
+    showToast("¡Sincronizado en vivo con GitHub!", "fa-solid fa-cloud-check text-emerald-400");
+    return true;
+  } catch (err) {
+    console.warn("Error en sincronización automática con GitHub API:", err);
+    return false;
+  }
+}
+
 // Abrir Modal de Administración
 function openAdminModal() {
   populateAdminGameSelect();
+  populateGithubTokenInput();
   adminModal.classList.remove("hidden");
   setTimeout(() => {
     adminModal.classList.remove("opacity-0");
@@ -1258,6 +1334,8 @@ async function handleAdminUpload(event) {
       try {
         localStorage.setItem("user_custom_captures", JSON.stringify(captures));
       } catch (e) {}
+
+      syncCapturesToGitHubAPI();
 
       showToast(`¡${successCount} ${successCount === 1 ? 'captura publicada' : 'capturas publicadas'} en "${game}"!`, "fa-solid fa-cloud-arrow-up text-amber-400");
     } finally {
