@@ -434,10 +434,12 @@ function renderFoldersView() {
 
   const foldersMap = {};
   captures.forEach(item => {
-    if (!foldersMap[item.game]) {
-      foldersMap[item.game] = [];
+    if (item && item.game) {
+      if (!foldersMap[item.game]) {
+        foldersMap[item.game] = [];
+      }
+      foldersMap[item.game].push(item);
     }
-    foldersMap[item.game].push(item);
   });
 
   const games = Object.keys(foldersMap);
@@ -484,25 +486,26 @@ function renderFoldersView() {
       const chosen = photos.find(p => p.id === folderCovers[gameName]);
       if (chosen) coverPhotoItem = chosen;
     }
-    const coverPhoto = coverPhotoItem.imageUrl;
+    const coverPhoto = coverPhotoItem ? coverPhotoItem.imageUrl : "";
     const count = photos.length;
-    const encodedGame = encodeURIComponent(gameName);
+    const escapedGame = escapeHtml(gameName);
 
     return `
       <article 
-        onclick="openFolder(decodeURIComponent('${encodedGame}'))"
+        data-game="${escapedGame}"
+        onclick="openFolder(this.getAttribute('data-game'))"
         ${isAdmin ? `
           draggable="true" 
-          ondragstart="handleAlbumDragStart(event, decodeURIComponent('${encodedGame}'))"
+          ondragstart="handleAlbumDragStart(event, this.getAttribute('data-game'))"
           ondragend="handleAlbumDragEnd(event)"
           ondragover="handleAlbumDragOver(event)"
-          ondrop="handleAlbumDrop(event, decodeURIComponent('${encodedGame}'))"
+          ondrop="handleAlbumDrop(event, this.getAttribute('data-game'))"
         ` : ''}
         class="relative overflow-hidden rounded-lg aspect-[16/10] bg-black group cursor-pointer border border-zinc-800/80 hover:border-zinc-600 transition-all duration-300 shadow-md"
       >
         <img 
           src="${coverPhoto}" 
-          alt="${escapeHtml(gameName)}" 
+          alt="${escapedGame}" 
           class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-75 group-hover:opacity-90"
           loading="lazy"
         >
@@ -511,13 +514,13 @@ function renderFoldersView() {
 
         ${isAdmin ? `
           <div class="absolute top-3 right-3 z-20 flex items-center gap-1 bg-zinc-950/90 border border-zinc-700/90 rounded-full px-2 py-1 shadow-lg backdrop-blur-md" onclick="event.stopPropagation()">
-            <button onclick="moveAlbumPosition(event, decodeURIComponent('${encodedGame}'), -1)" class="w-6 h-6 rounded-full hover:bg-zinc-800 flex items-center justify-center text-zinc-300 hover:text-white transition-colors cursor-pointer" title="Mover a la izquierda">
+            <button onclick="moveAlbumPosition(event, this.parentElement.parentElement.getAttribute('data-game'), -1)" class="w-6 h-6 rounded-full hover:bg-zinc-800 flex items-center justify-center text-zinc-300 hover:text-white transition-colors cursor-pointer" title="Mover a la izquierda">
               <i class="fa-solid fa-chevron-left text-[10px]"></i>
             </button>
             <span class="text-[10px] text-zinc-400 font-mono px-1 flex items-center gap-1 cursor-grab" title="Arrastrar para reordenar álbum">
               <i class="fa-solid fa-grip-vertical text-zinc-400"></i>
             </span>
-            <button onclick="moveAlbumPosition(event, decodeURIComponent('${encodedGame}'), 1)" class="w-6 h-6 rounded-full hover:bg-zinc-800 flex items-center justify-center text-zinc-300 hover:text-white transition-colors cursor-pointer" title="Mover a la derecha">
+            <button onclick="moveAlbumPosition(event, this.parentElement.parentElement.getAttribute('data-game'), 1)" class="w-6 h-6 rounded-full hover:bg-zinc-800 flex items-center justify-center text-zinc-300 hover:text-white transition-colors cursor-pointer" title="Mover a la derecha">
               <i class="fa-solid fa-chevron-right text-[10px]"></i>
             </button>
           </div>
@@ -526,7 +529,7 @@ function renderFoldersView() {
         <div class="absolute bottom-0 inset-x-0 p-5 flex items-end justify-between">
           <div>
             <h3 class="text-base font-semibold text-white tracking-wide group-hover:translate-x-1 transition-transform">
-              ${gameName}
+              ${escapedGame}
             </h3>
             <p class="text-xs text-zinc-400 font-mono mt-0.5">${count} ${count === 1 ? 'captura' : 'capturas'}</p>
           </div>
@@ -578,25 +581,32 @@ function togglePhotoSpoiler(event, id) {
 
 // Obtener clave de ordenación cronológica por nombre de archivo original (ej. 20240418011914_1.jpg)
 function getPhotoSortKey(photo) {
+  if (!photo) return "";
   if (photo.filename) return photo.filename;
   if (photo.imageUrl) {
     const filename = photo.imageUrl.split('/').pop();
     return filename;
   }
-  return String(photo.id);
+  return String(photo.id || "");
 }
 
 // 2. RENDERIZAR FOTOS DENTRO DE LA CARPETA SELECCIONADA
 function renderPhotosInFolderView() {
-  // Ordenar fotos cronológicamente por nombre de archivo original
+  if (!currentFolder) return;
+
+  // Filtrar fotos asociadas a la carpeta actual (coincidencia segura insensible a espacios/mayúsculas)
+  const targetFolderNorm = currentFolder.trim().toLowerCase();
   const photos = captures
-    .filter(item => item.game === currentFolder)
-    .sort((a, b) => getPhotoSortKey(a).localeCompare(getPhotoSortKey(b), undefined, { numeric: true, sensitivity: 'base' }));
+    .filter(item => item && item.game && item.game.trim().toLowerCase() === targetFolderNorm);
+
+  try {
+    photos.sort((a, b) => getPhotoSortKey(a).localeCompare(getPhotoSortKey(b), undefined, { numeric: true, sensitivity: 'base' }));
+  } catch (e) {}
 
   loadFolderCovers();
   let currentCoverId = folderCovers[currentFolder];
   if (!currentCoverId && photos.length > 0) {
-    const rawPhoto = captures.find(c => c.game === currentFolder);
+    const rawPhoto = captures.find(c => c && c.game && c.game.trim().toLowerCase() === targetFolderNorm);
     if (rawPhoto) currentCoverId = rawPhoto.id;
   }
   
@@ -613,14 +623,19 @@ function renderPhotosInFolderView() {
         <span>Volver a Carpetas</span>
       </button>
       <span class="text-xs text-zinc-500">/</span>
-      <span class="text-xs font-semibold text-zinc-100 uppercase tracking-wider">${currentFolder}</span>
+      <span class="text-xs font-semibold text-zinc-100 uppercase tracking-wider">${escapeHtml(currentFolder)}</span>
     </div>
     <span class="text-xs font-mono text-zinc-500">${photos.length} ${photos.length === 1 ? 'captura' : 'capturas'}</span>
   `;
 
   if (photos.length === 0) {
-    currentFolder = null;
-    renderFoldersView();
+    mainGrid.innerHTML = `
+      <div class="col-span-full py-16 text-center text-zinc-500 font-mono text-sm border border-dashed border-zinc-800 rounded-xl">
+        No se encontraron capturas asociadas a esta carpeta.
+      </div>
+    `;
+    emptyState.classList.add("hidden");
+    emptyState.classList.remove("flex");
     return;
   }
 
