@@ -408,8 +408,6 @@ function renderPhotosInFolderView() {
     .sort((a, b) => getPhotoSortKey(a).localeCompare(getPhotoSortKey(b), undefined, { numeric: true, sensitivity: 'base' }));
 
   const isAdmin = localStorage.getItem("admin_session") === "true";
-  const currentCoverId = photos.length > 0 ? photos[0].id : null;
-  
   const hasSpoilers = photos.some(p => p.isSpoiler);
   const areAlbumSpoilersRevealed = revealedSpoilersPerFolder[currentFolder] === true;
 
@@ -475,25 +473,10 @@ function renderPhotosInFolderView() {
   }
 
   const cardsHTML = photos.map(item => {
-    const isCurrentCover = item.id === currentCoverId;
     const isPhotoBlurred = item.isSpoiler && !areAlbumSpoilersRevealed && !individuallyRevealedPhotos[item.id];
 
     let adminButtonHTML = "";
     if (isAdmin) {
-      const coverBtn = isCurrentCover ? `
-        <span class="bg-zinc-950/90 border border-amber-500/50 text-amber-300 text-[10px] font-mono px-2 py-0.5 rounded shadow-lg backdrop-blur-md flex items-center gap-1">
-          <i class="fa-solid fa-star text-amber-400 text-[9px]"></i> Portada
-        </span>
-      ` : `
-        <button 
-          onclick="setAsFolderCover(event, ${item.id})"
-          title="Establecer como portada"
-          class="opacity-0 group-hover:opacity-100 bg-zinc-950/90 border border-zinc-700 hover:border-amber-400 text-zinc-300 hover:text-white px-2 py-0.5 rounded text-[10px] font-mono flex items-center gap-1 shadow-xl backdrop-blur-md transition-all"
-        >
-          <i class="fa-solid fa-star text-amber-400 text-[9px]"></i> Fijar Portada
-        </button>
-      `;
-
       const spoilerBtn = item.isSpoiler ? `
         <button 
           onclick="togglePhotoSpoiler(event, ${item.id})"
@@ -524,7 +507,6 @@ function renderPhotosInFolderView() {
 
       adminButtonHTML = `
         <div class="absolute top-2 right-2 z-30 flex items-center gap-1.5">
-          ${coverBtn}
           ${spoilerBtn}
           ${deleteBtn}
         </div>
