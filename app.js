@@ -107,22 +107,41 @@ async function initApp() {
 
 
 
-// Cargar capturas desde la base de datos oficial captures.json de forma prioritaria
+// Cargar capturas unificando captures.json oficial con las nuevas subidas locales del administrador
 async function loadSavedCaptures() {
+  let baseCaptures = [];
+
   try {
     const res = await fetch("./captures.json?v=" + Date.now());
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
-        captures = data;
-        return;
+        baseCaptures = data;
       }
     }
   } catch (e) {
     console.warn("Nota: usando fallback por defecto", e);
   }
 
-  captures = [...DEFAULT_INITIAL_CAPTURES];
+  if (baseCaptures.length === 0) {
+    baseCaptures = [...DEFAULT_INITIAL_CAPTURES];
+  }
+
+  try {
+    const saved = localStorage.getItem("user_custom_captures");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const valid = parsed.filter(c => c && c.game && c.imageUrl);
+        const existingIds = new Set(baseCaptures.map(c => c.id));
+        const newLocalItems = valid.filter(c => !existingIds.has(c.id));
+        captures = [...newLocalItems, ...baseCaptures];
+        return;
+      }
+    }
+  } catch (e) {}
+
+  captures = baseCaptures;
 }
 
 // Restaurar la galería a los juegos originales por defecto
