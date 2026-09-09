@@ -2,6 +2,8 @@
 
 > **Portfolio minimalista de fotografía virtual y capturas de videojuegos por Alejandro J.**
 
+🌐 **Web en directo:** [https://alejandrojp17.github.io/la-bendicion-del-modo-foto/](https://alejandrojp17.github.io/la-bendicion-del-modo-foto/)
+
 Una aplicación web moderna, estética y ultra rápida desarrollada con Vanilla JavaScript y Tailwind CSS para exhibir colecciones de capturas *in-game* en alta resolución, organizadas en carpetas temáticas por título.
 
 ---
@@ -36,11 +38,16 @@ Una aplicación web moderna, estética y ultra rápida desarrollada con Vanilla 
 
 ---
 
-## 🚀 Cómo Ejecutar el Proyecto
+## 🚀 Cómo Explorar o Ejecutar el Proyecto
 
-No requiere pasos de compilación ni instalación de dependencias complejas:
+### Opción 1: Ver Online en Directo (Recomendado) 🌐
+Puedes acceder directamente a la versión en producción desplegada en GitHub Pages:
 
-### Opción 1: Servidor Local Rápido (Recomendado)
+👉 **[https://alejandrojp17.github.io/la-bendicion-del-modo-foto/](https://alejandrojp17.github.io/la-bendicion-del-modo-foto/)**
+
+---
+
+### Opción 2: Servidor Local
 Con cualquier servidor local como **Live Server** (extensión de VS Code) o desde la terminal:
 
 ```bash
@@ -53,7 +60,7 @@ python -m http.server 3000
 
 Luego abre tu navegador en `http://localhost:3000`.
 
-### Opción 2: Doble Clic Directo
+### Opción 3: Doble Clic Directo
 Abre directamente `index.html` en tu navegador favorito. El proyecto cuenta con un sistema de reserva (*fallback*) que garantiza su funcionamiento visual incluso sin servidor web activo.
 
 ---
