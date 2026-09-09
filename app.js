@@ -1,4 +1,4 @@
-// Colección de capturas de fotografía virtual (La Bendición del Modo Foto)
+// Colección de capturas de fotografía virtual (La galeria)
 let captures = [];
 
 // Estado de navegación
@@ -29,7 +29,7 @@ const passwordForm = document.getElementById("passwordForm");
 const adminPasswordInput = document.getElementById("adminPasswordInput");
 const passwordError = document.getElementById("passwordError");
 
-// Hash criptográfico SHA-256 de 'Proyectopropro'
+// Hash criptográfico SHA-256 de la contraseña de administración
 const MASTER_PASSWORD_HASH = "737f56f0b1b93d4328e10c687e407aa0f17c15e235d1e44b0ccebe007d0926f4";
 
 // Configuración por defecto de Cloudinary
@@ -60,6 +60,30 @@ async function initApp() {
     checkUrlHashNavigation();
     renderApp();
   });
+
+  // Delegación de clics y accesibilidad con teclado en la rejilla principal de álbumes
+  if (mainGrid) {
+    mainGrid.addEventListener("click", (e) => {
+      if (e.target.closest("button")) return;
+      const card = e.target.closest("article[data-game]");
+      if (!card) return;
+      const gameName = card.getAttribute("data-game");
+      if (gameName) {
+        openFolder(gameName);
+      }
+    });
+
+    mainGrid.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        const card = e.target.closest("article[data-game]");
+        if (card && e.target === card) {
+          e.preventDefault();
+          const gameName = card.getAttribute("data-game");
+          if (gameName) openFolder(gameName);
+        }
+      }
+    });
+  }
 
   // Listeners del visor modal
   if (closeViewerBtn) closeViewerBtn.addEventListener("click", closeViewerModal);
@@ -105,7 +129,49 @@ async function initApp() {
   }
 }
 
+// Fallback predeterminado si falla la carga externa de captures.json
+const DEFAULT_INITIAL_CAPTURES = [
+  { id: 1, game: "ASTRO BOT", imageUrl: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=1400&auto=format&fit=crop", date: "2026" },
+  { id: 2, game: "Cyberpunk 2077", imageUrl: "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=1400&auto=format&fit=crop", date: "2026" },
+  { id: 3, game: "DayZ", imageUrl: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=1400&auto=format&fit=crop", date: "2026" },
+  { id: 4, game: "God of War Ragnarök", imageUrl: "https://images.unsplash.com/photo-1511447333015-45b65e60f6d5?q=80&w=1400&auto=format&fit=crop", date: "2026" },
+  { id: 5, game: "Laika: Aged Through Blood", imageUrl: "https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=1400&auto=format&fit=crop", date: "2026" },
+  { id: 6, game: "Marvel's Spider-Man 2", imageUrl: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?q=80&w=1400&auto=format&fit=crop", date: "2026" },
+  { id: 7, game: "Modern Warfare 3", imageUrl: "https://images.unsplash.com/photo-1542751110-97427bbecf20?q=80&w=1400&auto=format&fit=crop", date: "2026" },
+  { id: 8, game: "Red Dead Redemption", imageUrl: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=1400&auto=format&fit=crop", date: "2026" },
+  { id: 9, game: "Sea of Thieves", imageUrl: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1400&auto=format&fit=crop", date: "2026" },
+  { id: 10, game: "Uncharted: Colección Legado de los Ladrones", imageUrl: "https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=1400&auto=format&fit=crop", date: "2026" }
+];
 
+// Guardar capturas personalizadas en localStorage con manejo seguro de cuota
+function saveCustomCaptures() {
+  try {
+    localStorage.setItem("user_custom_captures", JSON.stringify(captures));
+  } catch (e) {
+    console.warn("No se pudo guardar en localStorage:", e);
+    if (e && (e.name === "QuotaExceededError" || e.code === 22)) {
+      showToast("Límite de almacenamiento del navegador alcanzado", "fa-solid fa-triangle-exclamation text-amber-400");
+    }
+  }
+}
+
+// Gestión de portadas personalizadas fijadas por el administrador
+let folderCovers = {};
+
+function loadFolderCovers() {
+  try {
+    const saved = localStorage.getItem("custom_folder_covers");
+    if (saved) folderCovers = JSON.parse(saved) || {};
+  } catch (e) {
+    folderCovers = {};
+  }
+}
+
+function saveFolderCovers() {
+  try {
+    localStorage.setItem("custom_folder_covers", JSON.stringify(folderCovers));
+  } catch (e) {}
+}
 
 // Obtener lista de IDs de capturas eliminadas por el administrador
 function getDeletedCaptureIds() {
@@ -126,7 +192,7 @@ function saveDeletedCaptureId(id) {
   } catch (e) {}
 }
 
-// Cargar capturas filtrando las eliminadas de forma prioritaria
+// Cargar capturas unificando captures.json, fotos añadidas y filtrando eliminadas
 async function loadSavedCaptures() {
   let baseCaptures = [];
 
@@ -147,13 +213,39 @@ async function loadSavedCaptures() {
   }
 
   const deletedIds = new Set(getDeletedCaptureIds());
-  captures = baseCaptures.filter(c => !deletedIds.has(c.id));
+  baseCaptures = baseCaptures.filter(c => !deletedIds.has(c.id));
+
+  // Cargar fotos añadidas o editadas localmente por el usuario
+  try {
+    const saved = localStorage.getItem("user_custom_captures");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const validLocal = parsed.filter(c => c && c.game && c.imageUrl && !deletedIds.has(c.id));
+        const existingIds = new Set(baseCaptures.map(c => c.id));
+        const newLocalItems = validLocal.filter(c => !existingIds.has(c.id));
+
+        // Actualizar propiedades editadas de capturas existentes (ej. isSpoiler)
+        const localOverrides = new Map(validLocal.filter(c => existingIds.has(c.id)).map(c => [c.id, c]));
+        baseCaptures = baseCaptures.map(c => localOverrides.get(c.id) || c);
+
+        captures = [...newLocalItems, ...baseCaptures].filter(c => !deletedIds.has(c.id));
+        return;
+      }
+    }
+  } catch (e) {
+    console.warn("Error leyendo capturas personalizadas:", e);
+  }
+
+  captures = baseCaptures;
 }
 
-// Restaurar la galería a los juegos originales por defecto
+// Restaurar la galería a los juegos originales por defecto (limpia eliminados, portadas y custom)
 function resetGalleryToDefaults() {
   try {
     localStorage.removeItem("user_custom_captures");
+    localStorage.removeItem("user_deleted_capture_ids");
+    localStorage.removeItem("custom_folder_covers");
   } catch (e) {}
   location.reload();
 }
@@ -314,6 +406,7 @@ function openFolder(gameName, updateHistory = true) {
 
 // 1. RENDERIZAR VISTA DE CARPETAS DE VIDEOJUEGOS
 function renderFoldersView() {
+  loadFolderCovers();
   const foldersMap = {};
   captures.forEach(item => {
     if (!foldersMap[item.game]) {
@@ -345,17 +438,30 @@ function renderFoldersView() {
 
   mainGrid.innerHTML = games.map(gameName => {
     const photos = foldersMap[gameName];
-    const coverPhoto = photos[0].imageUrl;
+    // Ordenar con la misma lógica cronológica para consistencia total
+    const sortedPhotos = [...photos].sort((a, b) => getPhotoSortKey(a).localeCompare(getPhotoSortKey(b), undefined, { numeric: true, sensitivity: 'base' }));
+    
+    // Usar la portada seleccionada si existe o la primera foto cronológica por defecto
+    let coverPhotoItem = sortedPhotos[0];
+    if (folderCovers[gameName]) {
+      const chosen = photos.find(p => String(p.id) === String(folderCovers[gameName]));
+      if (chosen) coverPhotoItem = chosen;
+    }
+    const coverPhoto = coverPhotoItem ? coverPhotoItem.imageUrl : "";
     const count = photos.length;
+    const escapedGame = escapeHtml(gameName);
 
     return `
       <article 
-        onclick="openFolder('${gameName.replace(/'/g, "\\'")}')"
-        class="relative overflow-hidden rounded-lg aspect-[16/10] bg-black group cursor-pointer border border-zinc-800/80 hover:border-zinc-600 transition-all duration-300 shadow-md"
+        data-game="${escapedGame}"
+        tabindex="0"
+        role="button"
+        aria-label="Abrir álbum ${escapedGame}"
+        class="relative overflow-hidden rounded-lg aspect-[16/10] bg-black group cursor-pointer border border-zinc-800/80 hover:border-zinc-600 focus:outline-none focus:border-amber-400 transition-all duration-300 shadow-md"
       >
         <img 
           src="${coverPhoto}" 
-          alt="${gameName}" 
+          alt="${escapedGame}" 
           class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-75 group-hover:opacity-90"
           loading="lazy"
         >
@@ -365,7 +471,7 @@ function renderFoldersView() {
         <div class="absolute bottom-0 inset-x-0 p-5 flex items-end justify-between">
           <div>
             <h3 class="text-base font-semibold text-white tracking-wide group-hover:translate-x-1 transition-transform">
-              ${gameName}
+              ${escapedGame}
             </h3>
             <p class="text-xs text-zinc-400 font-mono mt-0.5">${count} ${count === 1 ? 'captura' : 'capturas'}</p>
           </div>
@@ -405,10 +511,7 @@ function togglePhotoSpoiler(event, id) {
   if (!targetCapture) return;
 
   targetCapture.isSpoiler = !targetCapture.isSpoiler;
-
-  try {
-    localStorage.setItem("user_custom_captures", JSON.stringify(captures));
-  } catch (e) {}
+  saveCustomCaptures();
 
   const stateText = targetCapture.isSpoiler ? "marcada como Spoiler" : "desmarcada de Spoiler";
   showToast(`Foto ${stateText}`, "fa-solid fa-eye-slash text-red-400");
@@ -427,13 +530,14 @@ function getPhotoSortKey(photo) {
 
 // 2. RENDERIZAR FOTOS DENTRO DE LA CARPETA SELECCIONADA
 function renderPhotosInFolderView() {
+  loadFolderCovers();
   // Ordenar fotos cronológicamente por nombre de archivo original
   const photos = captures
     .filter(item => item.game === currentFolder)
     .sort((a, b) => getPhotoSortKey(a).localeCompare(getPhotoSortKey(b), undefined, { numeric: true, sensitivity: 'base' }));
 
   const isAdmin = localStorage.getItem("admin_session") === "true";
-  const currentCoverId = photos.length > 0 ? photos[0].id : null;
+  const currentCoverId = folderCovers[currentFolder] || null;
   
   const hasSpoilers = photos.some(p => p.isSpoiler);
   const areAlbumSpoilersRevealed = revealedSpoilersPerFolder[currentFolder] === true;
@@ -448,7 +552,7 @@ function renderPhotosInFolderView() {
         <span>Volver a Carpetas</span>
       </button>
       <span class="text-xs text-zinc-500">/</span>
-      <span class="text-xs font-semibold text-zinc-100 uppercase tracking-wider">${currentFolder}</span>
+      <span class="text-xs font-semibold text-zinc-100 uppercase tracking-wider">${escapeHtml(currentFolder)}</span>
     </div>
     <span class="text-xs font-mono text-zinc-500">${photos.length} ${photos.length === 1 ? 'captura' : 'capturas'}</span>
   `;
@@ -500,22 +604,29 @@ function renderPhotosInFolderView() {
   }
 
   const cardsHTML = photos.map(item => {
-    const isCurrentCover = item.id === currentCoverId;
+    const isCurrentCover = currentCoverId !== null && String(item.id) === String(currentCoverId);
     const isPhotoBlurred = item.isSpoiler && !areAlbumSpoilersRevealed && !individuallyRevealedPhotos[item.id];
 
     let adminButtonHTML = "";
     if (isAdmin) {
       const coverBtn = isCurrentCover ? `
-        <span class="bg-zinc-950/90 border border-amber-500/50 text-amber-300 text-[10px] font-mono px-2 py-0.5 rounded shadow-lg backdrop-blur-md flex items-center gap-1">
-          <i class="fa-solid fa-star text-amber-400 text-[9px]"></i> Portada
-        </span>
+        <button 
+          onclick="removeFolderCover(event, '${escapeHtml(currentFolder).replace(/'/g, "\\'")}')"
+          title="Portada fijada del álbum (clic para desmarcar)"
+          class="bg-amber-500/20 border border-amber-500/80 text-amber-300 hover:bg-red-950/80 hover:border-red-600 hover:text-red-200 px-2 py-0.5 rounded text-[10px] font-mono flex items-center gap-1 shadow-lg backdrop-blur-md transition-all cursor-pointer group/cov"
+        >
+          <i class="fa-solid fa-star text-amber-400 text-[9px] group-hover/cov:hidden"></i>
+          <i class="fa-solid fa-xmark text-red-400 text-[9px] hidden group-hover/cov:inline"></i>
+          <span class="group-hover/cov:hidden">Portada</span>
+          <span class="hidden group-hover/cov:inline">Desmarcar</span>
+        </button>
       ` : `
         <button 
           onclick="setAsFolderCover(event, ${item.id})"
-          title="Establecer como portada"
-          class="opacity-0 group-hover:opacity-100 bg-zinc-950/90 border border-zinc-700 hover:border-amber-400 text-zinc-300 hover:text-white px-2 py-0.5 rounded text-[10px] font-mono flex items-center gap-1 shadow-xl backdrop-blur-md transition-all"
+          title="Fijar como portada del álbum"
+          class="opacity-0 group-hover:opacity-100 bg-zinc-950/90 border border-zinc-700 hover:border-amber-400 text-zinc-300 hover:text-amber-300 px-2 py-0.5 rounded text-[10px] font-mono flex items-center gap-1 shadow-xl backdrop-blur-md transition-all cursor-pointer"
         >
-          <i class="fa-solid fa-star text-amber-400 text-[9px]"></i> Fijar Portada
+          <i class="fa-regular fa-star text-amber-400 text-[9px]"></i> Fijar Portada
         </button>
       `;
 
@@ -523,7 +634,7 @@ function renderPhotosInFolderView() {
         <button 
           onclick="togglePhotoSpoiler(event, ${item.id})"
           title="Quitar marca de spoiler"
-          class="bg-red-950/90 border border-red-700 hover:bg-red-900 text-red-300 text-[10px] font-mono px-2 py-0.5 rounded shadow-lg backdrop-blur-md flex items-center gap-1 transition-all"
+          class="bg-red-950/90 border border-red-700 hover:bg-red-900 text-red-300 text-[10px] font-mono px-2 py-0.5 rounded shadow-lg backdrop-blur-md flex items-center gap-1 transition-all cursor-pointer"
         >
           <i class="fa-solid fa-eye-slash text-red-400 text-[9px]"></i> Spoiler ON
         </button>
@@ -531,7 +642,7 @@ function renderPhotosInFolderView() {
         <button 
           onclick="togglePhotoSpoiler(event, ${item.id})"
           title="Marcar como spoiler"
-          class="opacity-0 group-hover:opacity-100 bg-zinc-950/90 border border-zinc-800 hover:border-red-500 text-zinc-400 hover:text-red-300 text-[10px] font-mono px-2 py-0.5 rounded shadow-lg backdrop-blur-md transition-all"
+          class="opacity-0 group-hover:opacity-100 bg-zinc-950/90 border border-zinc-800 hover:border-red-500 text-zinc-400 hover:text-red-300 text-[10px] font-mono px-2 py-0.5 rounded shadow-lg backdrop-blur-md transition-all cursor-pointer"
         >
           <i class="fa-solid fa-eye-slash text-red-400 text-[9px]"></i> Marcar Spoiler
         </button>
@@ -541,7 +652,7 @@ function renderPhotosInFolderView() {
         <button 
           onclick="confirmDeleteCapture(event, ${item.id})"
           title="Eliminar esta captura"
-          class="opacity-0 group-hover:opacity-100 bg-red-950/90 hover:bg-red-900 border border-red-800 text-red-200 hover:text-white px-2 py-0.5 rounded text-[10px] font-mono flex items-center gap-1 shadow-xl backdrop-blur-md transition-all"
+          class="opacity-0 group-hover:opacity-100 bg-red-950/90 hover:bg-red-900 border border-red-800 text-red-200 hover:text-white px-2 py-0.5 rounded text-[10px] font-mono flex items-center gap-1 shadow-xl backdrop-blur-md transition-all cursor-pointer"
         >
           <i class="fa-solid fa-trash-can text-red-400 text-[9px]"></i> Eliminar
         </button>
@@ -596,21 +707,28 @@ function renderPhotosInFolderView() {
 
 // Eliminar una captura con confirmación (Modo Admin)
 function confirmDeleteCapture(event, id) {
-  if (event) event.stopPropagation();
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
   if (id === null || id === undefined) return;
 
-  const captureToDelete = captures.find(c => c.id === id);
+  const captureToDelete = captures.find(c => String(c.id) === String(id));
   if (!captureToDelete) return;
 
   const gameName = captureToDelete.game;
 
   if (confirm(`¿Estás seguro de que deseas eliminar esta captura de "${gameName}"?`)) {
-    captures = captures.filter(c => c.id !== id);
+    captures = captures.filter(c => String(c.id) !== String(id));
     saveDeletedCaptureId(id);
+    saveCustomCaptures();
 
-    try {
-      localStorage.setItem("user_custom_captures", JSON.stringify(captures));
-    } catch (e) {}
+    // Si la captura era la portada guardada, liberarla
+    loadFolderCovers();
+    if (folderCovers[gameName] && String(folderCovers[gameName]) === String(id)) {
+      delete folderCovers[gameName];
+      saveFolderCovers();
+    }
 
     if (viewerModal && !viewerModal.classList.contains("hidden")) {
       closeViewerModal();
@@ -623,33 +741,37 @@ function confirmDeleteCapture(event, id) {
 
 // Establecer una foto como portada del álbum (Modo Admin)
 function setAsFolderCover(event, id) {
-  event.stopPropagation(); // Evitar abrir el visor al hacer clic en el botón de portada
-
-  const targetIndex = captures.findIndex(c => c.id === id);
-  if (targetIndex === -1) return;
-
-  const targetCapture = captures[targetIndex];
-  const gameName = targetCapture.game;
-
-  // Extraer el elemento de su posición actual
-  captures.splice(targetIndex, 1);
-
-  // Encontrar el primer elemento que pertenezca al mismo juego e insertarlo antes
-  const firstIndexForGame = captures.findIndex(c => c.game === gameName);
-
-  if (firstIndexForGame !== -1) {
-    captures.splice(firstIndexForGame, 0, targetCapture);
-  } else {
-    captures.unshift(targetCapture);
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
   }
 
-  // Guardar cambio en localStorage
-  try {
-    localStorage.setItem("user_custom_captures", JSON.stringify(captures));
-  } catch (e) {}
+  const targetCapture = captures.find(c => String(c.id) === String(id));
+  if (!targetCapture) return;
 
-  showToast(`¡Portada de "${gameName}" actualizada!`);
+  const gameName = targetCapture.game;
+  loadFolderCovers();
+  folderCovers[gameName] = targetCapture.id;
+  saveFolderCovers();
+
+  showToast(`¡Portada de "${gameName}" actualizada!`, "fa-solid fa-star text-amber-400");
   renderApp();
+}
+
+// Quitar portada fijada de un álbum (volver a la miniatura por defecto)
+function removeFolderCover(event, gameName) {
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+
+  loadFolderCovers();
+  if (folderCovers[gameName]) {
+    delete folderCovers[gameName];
+    saveFolderCovers();
+    showToast(`Portada de "${gameName}" restablecida`, "fa-solid fa-rotate-left text-zinc-300");
+    renderApp();
+  }
 }
 
 // Mostrar notificación Toast discreta
@@ -710,9 +832,7 @@ function togglePhotoSpoilerFromViewer() {
 
   targetCapture.isSpoiler = !targetCapture.isSpoiler;
 
-  try {
-    localStorage.setItem("user_custom_captures", JSON.stringify(captures));
-  } catch (e) {}
+  saveCustomCaptures();
 
   const stateText = targetCapture.isSpoiler ? "marcada como Spoiler" : "desmarcada de Spoiler";
   showToast(`Foto ${stateText}`, "fa-solid fa-eye-slash text-red-400");
@@ -1110,10 +1230,8 @@ async function handleAdminUpload(event) {
         }
       }
 
-      // Guardar en el almacenamiento local para persistencia
-      try {
-        localStorage.setItem("user_custom_captures", JSON.stringify(captures));
-      } catch (e) {}
+      // Guardar en el almacenamiento local para persistencia con manejo seguro
+      saveCustomCaptures();
 
       showToast(`¡${successCount} ${successCount === 1 ? 'captura publicada' : 'capturas publicadas'} en "${game}"!`, "fa-solid fa-cloud-arrow-up text-amber-400");
     } finally {
@@ -1136,9 +1254,7 @@ async function handleAdminUpload(event) {
 
     captures.unshift(newCapture);
 
-    try {
-      localStorage.setItem("user_custom_captures", JSON.stringify(captures));
-    } catch (e) {}
+    saveCustomCaptures();
 
     showToast(`¡Captura publicada en "${game}"!`, "fa-solid fa-cloud-arrow-up text-amber-400");
     if (isSpoilerCheckbox) isSpoilerCheckbox.checked = false;
