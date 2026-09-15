@@ -64,6 +64,22 @@ async function initApp() {
   // Delegación de clics y accesibilidad con teclado en la rejilla principal de álbumes
   if (mainGrid) {
     mainGrid.addEventListener("click", (e) => {
+      // Evitar abrir la carpeta si se hace clic en cualquier control de administración del álbum
+      if (e.target.closest(".admin-album-controls")) {
+        const btn = e.target.closest("button");
+        if (btn) {
+          const action = btn.getAttribute("data-action");
+          if (action === "move-album-left" || action === "move-album-right") {
+            e.stopPropagation();
+            const card = btn.closest("article[data-game]");
+            if (card) {
+              const gameName = card.getAttribute("data-game");
+              moveAlbumPosition(gameName, action === "move-album-left" ? -1 : 1);
+            }
+          }
+        }
+        return;
+      }
       if (e.target.closest("button")) return;
       const card = e.target.closest("article[data-game]");
       if (!card) return;
@@ -75,6 +91,7 @@ async function initApp() {
 
     mainGrid.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
+        if (e.target.closest(".admin-album-controls") || e.target.closest("button")) return;
         const card = e.target.closest("article[data-game]");
         if (card && e.target === card) {
           e.preventDefault();
@@ -82,6 +99,60 @@ async function initApp() {
           if (gameName) openFolder(gameName);
         }
       }
+    });
+
+    // Drag & Drop para reordenar álbumes en la rejilla principal
+    mainGrid.addEventListener("dragstart", (e) => {
+      const isAdmin = localStorage.getItem("admin_session") === "true";
+      if (!isAdmin || currentFolder !== null) return;
+      const card = e.target.closest("article[data-game]");
+      if (!card) return;
+      draggedAlbumName = card.getAttribute("data-game");
+      if (!draggedAlbumName) return;
+      e.dataTransfer.setData("text/plain", draggedAlbumName);
+      e.dataTransfer.effectAllowed = "move";
+      setTimeout(() => {
+        card.classList.add("opacity-40", "scale-95");
+      }, 0);
+    });
+
+    mainGrid.addEventListener("dragover", (e) => {
+      const isAdmin = localStorage.getItem("admin_session") === "true";
+      if (!isAdmin || currentFolder !== null || !draggedAlbumName) return;
+      const card = e.target.closest("article[data-game]");
+      if (card) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        card.classList.add("ring-2", "ring-amber-400");
+      }
+    });
+
+    mainGrid.addEventListener("dragleave", (e) => {
+      const card = e.target.closest("article[data-game]");
+      if (card) {
+        card.classList.remove("ring-2", "ring-amber-400");
+      }
+    });
+
+    mainGrid.addEventListener("drop", (e) => {
+      const isAdmin = localStorage.getItem("admin_session") === "true";
+      if (!isAdmin || currentFolder !== null || !draggedAlbumName) return;
+      const card = e.target.closest("article[data-game]");
+      if (!card) return;
+      e.preventDefault();
+      card.classList.remove("ring-2", "ring-amber-400");
+      const targetGame = card.getAttribute("data-game");
+      if (targetGame && targetGame !== draggedAlbumName) {
+        handleAlbumDrop(draggedAlbumName, targetGame);
+      }
+      draggedAlbumName = null;
+    });
+
+    mainGrid.addEventListener("dragend", () => {
+      document.querySelectorAll("article[data-game]").forEach(card => {
+        card.classList.remove("opacity-40", "scale-95", "ring-2", "ring-amber-400");
+      });
+      draggedAlbumName = null;
     });
   }
 
@@ -246,6 +317,7 @@ function resetGalleryToDefaults() {
     localStorage.removeItem("user_custom_captures");
     localStorage.removeItem("user_deleted_capture_ids");
     localStorage.removeItem("custom_folder_covers");
+    localStorage.removeItem("custom_album_order");
   } catch (e) {}
   location.reload();
 }
@@ -354,6 +426,7 @@ function toggleAdminMode(enable) {
     if (adminContainer) adminContainer.classList.add("hidden");
     if (publicAdminTrigger) publicAdminTrigger.classList.remove("hidden");
   }
+  renderApp();
 }
 
 // Triple clic en el título para solicitar acceso
@@ -404,9 +477,95 @@ function openFolder(gameName, updateHistory = true) {
   renderApp();
 }
 
+// Estado y gestión del orden personalizado de álbumes
+let customAlbumOrder = [];
+let draggedAlbumName = null;
+
+function loadCustomAlbumOrder() {
+  try {
+    const saved = localStorage.getItem("custom_album_order");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        customAlbumOrder = parsed;
+      }
+    }
+  } catch (e) {
+    customAlbumOrder = [];
+  }
+}
+
+function saveCustomAlbumOrder() {
+  try {
+    localStorage.setItem("custom_album_order", JSON.stringify(customAlbumOrder));
+  } catch (e) {}
+}
+
+function getAvailableGames() {
+  const foldersMap = {};
+  captures.forEach(item => {
+    if (item.game) foldersMap[item.game] = true;
+  });
+  return Object.keys(foldersMap);
+}
+
+function moveAlbumPosition(gameName, direction) {
+  if (!gameName) return;
+  loadCustomAlbumOrder();
+
+  const currentGames = getAvailableGames();
+  let order = customAlbumOrder.length > 0 ? [...customAlbumOrder] : [...currentGames];
+
+  currentGames.forEach(g => {
+    if (!order.includes(g)) order.push(g);
+  });
+  order = order.filter(g => currentGames.includes(g));
+
+  const fromIdx = order.indexOf(gameName);
+  if (fromIdx === -1) return;
+
+  const toIdx = fromIdx + direction;
+  if (toIdx < 0 || toIdx >= order.length) return;
+
+  order.splice(fromIdx, 1);
+  order.splice(toIdx, 0, gameName);
+
+  customAlbumOrder = order;
+  saveCustomAlbumOrder();
+  showToast(`Carpeta "${gameName}" reordenada`, "fa-solid fa-arrows-left-right text-amber-400");
+  renderApp();
+}
+
+function handleAlbumDrop(sourceGame, targetGame) {
+  if (!sourceGame || !targetGame || sourceGame === targetGame) return;
+  loadCustomAlbumOrder();
+
+  const currentGames = getAvailableGames();
+  let order = customAlbumOrder.length > 0 ? [...customAlbumOrder] : [...currentGames];
+
+  currentGames.forEach(g => {
+    if (!order.includes(g)) order.push(g);
+  });
+  order = order.filter(g => currentGames.includes(g));
+
+  const fromIdx = order.indexOf(sourceGame);
+  const toIdx = order.indexOf(targetGame);
+
+  if (fromIdx !== -1 && toIdx !== -1) {
+    order.splice(fromIdx, 1);
+    order.splice(toIdx, 0, sourceGame);
+    customAlbumOrder = order;
+    saveCustomAlbumOrder();
+    showToast(`Carpeta "${sourceGame}" reordenada`, "fa-solid fa-arrows-up-down-left-right text-amber-400");
+    renderApp();
+  }
+}
+
 // 1. RENDERIZAR VISTA DE CARPETAS DE VIDEOJUEGOS
 function renderFoldersView() {
   loadFolderCovers();
+  loadCustomAlbumOrder();
+
   const foldersMap = {};
   captures.forEach(item => {
     if (!foldersMap[item.game]) {
@@ -416,12 +575,26 @@ function renderFoldersView() {
   });
 
   const games = Object.keys(foldersMap);
+  const isAdmin = localStorage.getItem("admin_session") === "true";
+
+  // Ordenar álbumes según la ordenación personalizada del administrador
+  if (customAlbumOrder && customAlbumOrder.length > 0) {
+    games.sort((a, b) => {
+      const idxA = customAlbumOrder.indexOf(a);
+      const idxB = customAlbumOrder.indexOf(b);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+    });
+  }
 
   navigationHeader.innerHTML = `
     <div>
       <span class="text-xs font-semibold text-zinc-300 tracking-wider uppercase flex items-center gap-2">
         <i class="fa-regular fa-folder text-zinc-400"></i> Carpetas de Videojuegos
       </span>
+      ${isAdmin ? '<p class="text-[11px] text-amber-400/90 font-mono mt-0.5 flex items-center gap-1.5"><i class="fa-solid fa-up-down-left-right text-[10px]"></i>Modo Edición: Arrastra las carpetas o usa ◄ ► para reordenarlas</p>' : ''}
     </div>
     <span class="text-xs font-mono text-zinc-500">${games.length} ${games.length === 1 ? 'carpeta' : 'carpetas'}</span>
   `;
@@ -436,7 +609,7 @@ function renderFoldersView() {
   emptyState.classList.add("hidden");
   emptyState.classList.remove("flex");
 
-  mainGrid.innerHTML = games.map(gameName => {
+  mainGrid.innerHTML = games.map((gameName, index) => {
     const photos = foldersMap[gameName];
     // Ordenar con la misma lógica cronológica para consistencia total
     const sortedPhotos = [...photos].sort((a, b) => getPhotoSortKey(a).localeCompare(getPhotoSortKey(b), undefined, { numeric: true, sensitivity: 'base' }));
@@ -451,24 +624,55 @@ function renderFoldersView() {
     const count = photos.length;
     const escapedGame = escapeHtml(gameName);
 
+    const isFirst = index === 0;
+    const isLast = index === games.length - 1;
+
     return `
       <article 
         data-game="${escapedGame}"
         tabindex="0"
         role="button"
         aria-label="Abrir álbum ${escapedGame}"
-        class="relative overflow-hidden rounded-lg aspect-[16/10] bg-black group cursor-pointer border border-zinc-800/80 hover:border-zinc-600 focus:outline-none focus:border-amber-400 transition-all duration-300 shadow-md"
+        ${isAdmin ? 'draggable="true"' : ''}
+        class="relative overflow-hidden rounded-lg aspect-[16/10] bg-black group cursor-pointer border border-zinc-800/80 hover:border-zinc-600 focus:outline-none focus:border-amber-400 transition-all duration-300 shadow-md select-none"
       >
         <img 
           src="${coverPhoto}" 
           alt="${escapedGame}" 
-          class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-75 group-hover:opacity-90"
+          class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-75 group-hover:opacity-90 pointer-events-none select-none"
           loading="lazy"
+          draggable="false"
         >
         
-        <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/30 to-transparent opacity-90 group-hover:opacity-75 transition-opacity"></div>
+        <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/30 to-transparent opacity-90 group-hover:opacity-75 transition-opacity pointer-events-none"></div>
 
-        <div class="absolute bottom-0 inset-x-0 p-5 flex items-end justify-between">
+        ${isAdmin ? `
+          <div class="admin-album-controls absolute top-3 right-3 z-20 flex items-center gap-1 bg-zinc-950/90 border border-zinc-700/90 rounded-full px-2 py-1 shadow-lg backdrop-blur-md transition-all">
+            <button 
+              type="button" 
+              data-action="move-album-left" 
+              class="w-6 h-6 rounded-full hover:bg-zinc-800 flex items-center justify-center text-zinc-300 hover:text-white transition-colors cursor-pointer ${isFirst ? 'opacity-30 pointer-events-none' : ''}" 
+              title="Mover hacia la izquierda"
+              ${isFirst ? 'disabled' : ''}
+            >
+              <i class="fa-solid fa-chevron-left text-[10px] pointer-events-none"></i>
+            </button>
+            <span class="text-[10px] text-zinc-400 font-mono px-1 flex items-center gap-1 cursor-grab active:cursor-grabbing" title="Arrastrar para reordenar carpeta">
+              <i class="fa-solid fa-grip-vertical text-zinc-400 pointer-events-none"></i>
+            </span>
+            <button 
+              type="button" 
+              data-action="move-album-right" 
+              class="w-6 h-6 rounded-full hover:bg-zinc-800 flex items-center justify-center text-zinc-300 hover:text-white transition-colors cursor-pointer ${isLast ? 'opacity-30 pointer-events-none' : ''}" 
+              title="Mover hacia la derecha"
+              ${isLast ? 'disabled' : ''}
+            >
+              <i class="fa-solid fa-chevron-right text-[10px] pointer-events-none"></i>
+            </button>
+          </div>
+        ` : ''}
+
+        <div class="absolute bottom-0 inset-x-0 p-5 flex items-end justify-between pointer-events-none">
           <div>
             <h3 class="text-base font-semibold text-white tracking-wide group-hover:translate-x-1 transition-transform">
               ${escapedGame}
