@@ -202,16 +202,19 @@ async function initApp() {
 
 // Fallback predeterminado si falla la carga externa de captures.json
 const DEFAULT_INITIAL_CAPTURES = [
-  { id: 1, game: "ASTRO BOT", imageUrl: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=1400&auto=format&fit=crop", date: "2026" },
-  { id: 2, game: "Cyberpunk 2077", imageUrl: "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=1400&auto=format&fit=crop", date: "2026" },
-  { id: 3, game: "DayZ", imageUrl: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=1400&auto=format&fit=crop", date: "2026" },
+  { id: 1, game: "Cyberpunk 2077", imageUrl: "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=1400&auto=format&fit=crop", date: "2026" },
+  { id: 2, game: "Red Dead Redemption", imageUrl: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=1400&auto=format&fit=crop", date: "2026" },
+  { id: 3, game: "Signalis", imageUrl: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1400&auto=format&fit=crop", date: "2026" },
   { id: 4, game: "God of War Ragnarök", imageUrl: "https://images.unsplash.com/photo-1511447333015-45b65e60f6d5?q=80&w=1400&auto=format&fit=crop", date: "2026" },
-  { id: 5, game: "Laika: Aged Through Blood", imageUrl: "https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=1400&auto=format&fit=crop", date: "2026" },
-  { id: 6, game: "Marvel's Spider-Man 2", imageUrl: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?q=80&w=1400&auto=format&fit=crop", date: "2026" },
-  { id: 7, game: "Modern Warfare 3", imageUrl: "https://images.unsplash.com/photo-1542751110-97427bbecf20?q=80&w=1400&auto=format&fit=crop", date: "2026" },
-  { id: 8, game: "Red Dead Redemption", imageUrl: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=1400&auto=format&fit=crop", date: "2026" },
-  { id: 9, game: "Sea of Thieves", imageUrl: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1400&auto=format&fit=crop", date: "2026" },
-  { id: 10, game: "Uncharted: Colección Legado de los Ladrones", imageUrl: "https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=1400&auto=format&fit=crop", date: "2026" }
+  { id: 5, game: "Marvel's Spider-Man 2", imageUrl: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?q=80&w=1400&auto=format&fit=crop", date: "2026" },
+  { id: 6, game: "ASTRO BOT", imageUrl: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=1400&auto=format&fit=crop", date: "2026" },
+  { id: 7, game: "Uncharted: Colección Legado de los Ladrones", imageUrl: "https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=1400&auto=format&fit=crop", date: "2026" },
+  { id: 8, game: "Ratchet & Clank: Una dimensión aparte", imageUrl: "https://images.unsplash.com/photo-1538481199705-c710c4e965fc?q=80&w=1400&auto=format&fit=crop", date: "2026" },
+  { id: 9, game: "Laika: Aged Through Blood", imageUrl: "https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=1400&auto=format&fit=crop", date: "2026" },
+  { id: 10, game: "Sea of Thieves", imageUrl: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1400&auto=format&fit=crop", date: "2026" },
+  { id: 11, game: "Call of Duty: Black Ops", imageUrl: "https://images.unsplash.com/photo-1542751110-97427bbecf20?q=80&w=1400&auto=format&fit=crop", date: "2026" },
+  { id: 12, game: "Modern Warfare 3", imageUrl: "https://images.unsplash.com/photo-1542751110-97427bbecf20?q=80&w=1400&auto=format&fit=crop", date: "2026" },
+  { id: 13, game: "DayZ", imageUrl: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=1400&auto=format&fit=crop", date: "2026" }
 ];
 
 // Guardar capturas personalizadas en localStorage con manejo seguro de cuota
@@ -318,6 +321,7 @@ function resetGalleryToDefaults() {
     localStorage.removeItem("user_deleted_capture_ids");
     localStorage.removeItem("custom_folder_covers");
     localStorage.removeItem("custom_album_order");
+    localStorage.removeItem("custom_album_order_version");
   } catch (e) {}
   location.reload();
 }
@@ -477,22 +481,49 @@ function openFolder(gameName, updateHistory = true) {
   renderApp();
 }
 
+// Orden predeterminado global para todos los visitantes
+const DEFAULT_ALBUM_ORDER = [
+  "Cyberpunk 2077",
+  "Red Dead Redemption",
+  "Signalis",
+  "God of War Ragnarök",
+  "Marvel's Spider-Man 2",
+  "ASTRO BOT",
+  "Uncharted: Colección Legado de los Ladrones",
+  "Ratchet & Clank: Una dimensión aparte",
+  "Laika: Aged Through Blood",
+  "Sea of Thieves",
+  "Call of Duty: Black Ops",
+  "Modern Warfare 3",
+  "DayZ"
+];
+
 // Estado y gestión del orden personalizado de álbumes
 let customAlbumOrder = [];
 let draggedAlbumName = null;
 
 function loadCustomAlbumOrder() {
   try {
+    const version = localStorage.getItem("custom_album_order_version");
+    if (version !== "20260915_v1") {
+      // Sincronizar con el nuevo orden oficial del autor
+      localStorage.removeItem("custom_album_order");
+      localStorage.setItem("custom_album_order_version", "20260915_v1");
+      customAlbumOrder = [...DEFAULT_ALBUM_ORDER];
+      return;
+    }
     const saved = localStorage.getItem("custom_album_order");
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) {
+      if (Array.isArray(parsed) && parsed.length > 0) {
         customAlbumOrder = parsed;
+        return;
       }
     }
   } catch (e) {
     customAlbumOrder = [];
   }
+  customAlbumOrder = [...DEFAULT_ALBUM_ORDER];
 }
 
 function saveCustomAlbumOrder() {
@@ -577,17 +608,20 @@ function renderFoldersView() {
   const games = Object.keys(foldersMap);
   const isAdmin = localStorage.getItem("admin_session") === "true";
 
-  // Ordenar álbumes según la ordenación personalizada del administrador
-  if (customAlbumOrder && customAlbumOrder.length > 0) {
-    games.sort((a, b) => {
-      const idxA = customAlbumOrder.indexOf(a);
-      const idxB = customAlbumOrder.indexOf(b);
-      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-      if (idxA !== -1) return -1;
-      if (idxB !== -1) return 1;
-      return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
-    });
-  }
+  // Ordenar álbumes según la ordenación personalizada del administrador o el orden oficial por defecto
+  const effectiveOrder = (customAlbumOrder && customAlbumOrder.length > 0) ? customAlbumOrder : DEFAULT_ALBUM_ORDER;
+
+  games.sort((a, b) => {
+    let idxA = effectiveOrder.indexOf(a);
+    let idxB = effectiveOrder.indexOf(b);
+    if (idxA === -1) idxA = effectiveOrder.findIndex(g => g.toLowerCase() === a.toLowerCase());
+    if (idxB === -1) idxB = effectiveOrder.findIndex(g => g.toLowerCase() === b.toLowerCase());
+
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+  });
 
   navigationHeader.innerHTML = `
     <div>
